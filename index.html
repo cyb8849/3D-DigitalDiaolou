@@ -638,6 +638,9 @@
             </div>
             <div id="imageContainer" class="relative w-full h-[280px] bg-[#1a1210] rounded-lg border-2 border-[#8B6E55] overflow-hidden flex items-center justify-center">
                 <button id="prevImage" class="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-black/60 hover:bg-black/80 text-white rounded-full z-10 text-lg">‹</button>
+                <div id="loadingSpinner" class="absolute inset-0 flex items-center justify-center bg-black/30">
+                    <div class="w-8 h-8 border-2 border-[#8B6E55] border-t-[#C87941] rounded-full animate-spin"></div>
+                </div>
                 <img id="modalImage" class="w-full h-full object-contain">
                 <button id="nextImage" class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-black/60 hover:bg-black/80 text-white rounded-full z-10 text-lg">›</button>
             </div>
@@ -1045,8 +1048,25 @@
         let currentImages = [];
         let currentImageIndex = 0;
         let currentRequestId = 0;
+        const preloadedImages = {};
 
-        function showHotspotInfo(index) {
+        function preloadImage(src) {
+            return new Promise((resolve, reject) => {
+                if (preloadedImages[src]) {
+                    resolve(preloadedImages[src]);
+                    return;
+                }
+                const img = new Image();
+                img.onload = () => {
+                    preloadedImages[src] = img;
+                    resolve(img);
+                };
+                img.onerror = reject;
+                img.src = src;
+            });
+        }
+
+        async function showHotspotInfo(index) {
             const data = hotspots[index];
             document.getElementById('modalTitle').textContent = data.name;
             document.getElementById('modalEra').textContent = data.era;
@@ -1056,6 +1076,17 @@
             currentImages = data.images || [data.image];
             currentImageIndex = 0;
             
+            const spinner = document.getElementById('loadingSpinner');
+            spinner.style.display = 'flex';
+            
+            for (const imgPath of currentImages) {
+                try {
+                    await preloadImage(imgPath + '?v=' + Date.now());
+                } catch (e) {
+                    console.warn('Failed to preload:', imgPath);
+                }
+            }
+            
             updateModalImage();
             document.getElementById('infoModal').style.display = 'flex';
         }
@@ -1064,6 +1095,7 @@
             const img = document.getElementById('modalImage');
             const container = document.getElementById('imageContainer');
             const indicator = document.getElementById('imageIndicator');
+            const spinner = document.getElementById('loadingSpinner');
             const requestId = ++currentRequestId;
             
             if (currentImages.length > 1) {
@@ -1080,11 +1112,13 @@
             }
             
             container.style.height = '320px';
+            spinner.style.display = 'flex';
             const imgPath = currentImages[currentImageIndex];
             const cacheBustedPath = imgPath + '?v=' + Date.now();
             
             img.onload = () => {
                 if (requestId !== currentRequestId) return;
+                spinner.style.display = 'none';
                 const containerWidth = container.offsetWidth - 32;
                 const scale = Math.min(containerWidth / img.width, 1);
                 const newHeight = Math.min(img.height * scale + 16, 500);
@@ -1092,6 +1126,7 @@
             };
             img.onerror = () => {
                 if (requestId !== currentRequestId) return;
+                spinner.style.display = 'none';
                 img.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"%3E%3Crect fill="%233d2d26" width="200" height="200"/%3E%3Ctext fill="%238B6E55" font-family="sans-serif" font-size="14" x="50%25" y="50%25" text-anchor="middle" dominant-baseline="middle"%3E图片加载失败%3C/text%3E%3C/svg%3E';
             };
             img.src = cacheBustedPath;
