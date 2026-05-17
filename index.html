@@ -1,0 +1,1273 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>洛场村碉楼群 - 华侨建筑遗产数字化保护</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #2B1F1A; font-family: 'Microsoft YaHei', serif; overflow: hidden; }
+        #canvas-container { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1; }
+        #hotspotContainer { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 30; pointer-events: none; }
+        
+        .panel {
+            background: linear-gradient(135deg, rgba(43,31,26,0.95) 0%, rgba(60,44,38,0.9) 100%);
+            border: 2px solid #8B6E55;
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .panel-title {
+            color: #F6E9D7;
+            font-size: 1rem;
+            font-weight: bold;
+            border-bottom: 1px solid #8B6E55;
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+        }
+        
+        .data-value { color: #C87941; font-weight: bold; }
+        
+        .hotspot {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: radial-gradient(circle, #C87941 0%, #8B6E55 60%, transparent 100%);
+            border-radius: 50%;
+            cursor: pointer;
+            animation: pulse 2s infinite;
+            transform: translate(-50%, -50%);
+            z-index: 100;
+            pointer-events: auto;
+        }
+        
+        .hotspot::after {
+            content: '';
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 8px; height: 8px;
+            background: #F6E9D7;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+            50% { transform: translate(-50%, -50%) scale(1.4); opacity: 0.6; }
+        }
+        
+        .timeline-dot {
+            width: 16px; height: 16px;
+            background: #8B6E55;
+            border: 2px solid #C87941;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .timeline-dot:hover, .timeline-dot.active {
+            background: #C87941;
+            transform: scale(1.3);
+            box-shadow: 0 0 12px rgba(200,121,65,0.6);
+        }
+        
+        .timeline-line {
+            position: absolute;
+            top: 50%; left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, #8B6E55 0%, #C87941 50%, #8B6E55 100%);
+            z-index: -1;
+            transform: translateY(-50%);
+        }
+        
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+        
+        .modal-content {
+            background: linear-gradient(135deg, #3D2D26 0%, #2B1F1A 100%);
+            border: 2px solid #8B6E55;
+            border-radius: 12px;
+            max-width: 950px;
+            width: 95%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .timeline-image-container {
+            position: relative;
+            width: 100%;
+            height: 280px;
+            background: #1a1210;
+            border: 2px solid #8B6E55;
+            border-radius: 8px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        }
+        
+        .timeline-image-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        
+        .timeline-image-placeholder {
+            color: #8B6E55;
+            font-size: 1rem;
+            text-align: center;
+            padding: 40px;
+            font-style: italic;
+            background: linear-gradient(135deg, rgba(74,55,40,0.3), rgba(43,31,26,0.5));
+            border-radius: 4px;
+            border: 1px dashed #8B6E55;
+        }
+        
+        .progress-bar {
+            background: #1a1210;
+            border: 1px solid #8B6E55;
+            border-radius: 8px;
+            height: 18px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            background: linear-gradient(90deg, #C87941, #E8A862);
+            height: 100%;
+            transition: width 0.8s ease;
+        }
+        
+        .view-btn {
+            background: rgba(139,110,85,0.4);
+            border: 1px solid #8B6E55;
+            color: #F6E9D7;
+            padding: 6px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.85rem;
+        }
+        
+        .view-btn:hover, .view-btn.active {
+            background: #C87941;
+            border-color: #C87941;
+        }
+        
+        .tag-cloud span {
+            background: rgba(139,110,85,0.3);
+            border: 1px solid #8B6E55;
+            padding: 4px 10px;
+            border-radius: 4px;
+            color: #D4C2A8;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .tag-cloud span:hover {
+            background: #C87941;
+            color: #F6E9D7;
+        }
+        
+        .qiaopi-card {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            padding: 8px;
+            background: linear-gradient(135deg, rgba(74,55,40,0.5), rgba(61,45,38,0.5));
+            border: 1px solid #8B6E55;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .qiaopi-card:hover {
+            background: linear-gradient(135deg, rgba(139,110,85,0.4), rgba(200,121,65,0.3));
+            border-color: #C87941;
+            transform: translateX(4px);
+        }
+        
+        .qiaopi-thumb {
+            width: 48px;
+            height: 48px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        
+        .qiaopi-info {
+            flex: 1;
+        }
+        
+        .genealogy {
+            position: relative;
+            padding: 10px 0;
+        }
+        
+        .genealogy-root {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .genealogy-node {
+            padding: 4px 10px;
+            border: 2px solid;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            color: #F6E9D7;
+            text-align: center;
+            white-space: nowrap;
+        }
+        
+        .genealogy-sub {
+            font-size: 0.6rem;
+            color: #D4C2A8;
+            margin-top: 2px;
+        }
+        
+        .genealogy-line-v {
+            width: 2px;
+            height: 12px;
+            background: #8B6E55;
+        }
+        
+        .genealogy-line-h {
+            width: 20px;
+            height: 2px;
+            background: #8B6E55;
+        }
+        
+        .migration-map {
+            position: relative;
+            height: 140px;
+            background: linear-gradient(135deg, rgba(74,55,40,0.3), rgba(43,31,26,0.5));
+            border: 1px solid #8B6E55;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        
+        .migration-node {
+            position: absolute;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transform: translate(-50%, -50%);
+            z-index: 2;
+        }
+        
+        .migration-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            border: 1px solid #F6E9D7;
+        }
+        
+        .migration-label {
+            font-size: 0.55rem;
+            color: #D4C2A8;
+            margin-top: 2px;
+            white-space: nowrap;
+        }
+        
+        .migration-lines {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+        
+        .qiaopi-modal-content {
+            background: linear-gradient(135deg, #3D2D26 0%, #2B1F1A 100%);
+            border: 2px solid #8B6E55;
+            border-radius: 12px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 85vh;
+            overflow-y: auto;
+            padding: 24px;
+        }
+        
+        .qiaopi-detail-image {
+            width: 100%;
+            height: 300px;
+            background: linear-gradient(135deg, #4a3728, #3d2d26);
+            border: 2px solid #8B6E55;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 16px;
+        }
+        
+        .qiaopi-detail-text {
+            background: rgba(74,55,40,0.3);
+            border: 1px solid #8B6E55;
+            border-radius: 6px;
+            padding: 12px;
+            margin-top: 12px;
+        }
+        
+        .relation-network {
+            position: relative;
+            background: linear-gradient(135deg, rgba(74,55,40,0.2), rgba(43,31,26,0.4));
+            border: 1px solid #8B6E55;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        
+        .network-svg {
+            width: 100%;
+            height: 180px;
+        }
+        
+        .node-circle {
+            cursor: pointer;
+            transition: all 0.3s ease;
+            animation: nodeFloat 3s ease-in-out infinite;
+        }
+        
+        .node-circle:hover {
+            transform: scale(1.2);
+            filter: url(#glow);
+        }
+        
+        .network-line {
+            animation: linePulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes nodeFloat {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-2px); }
+        }
+        
+        @keyframes linePulse {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+        }
+        
+        .network-legend {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            padding: 8px;
+            background: rgba(43,31,26,0.5);
+            border-top: 1px solid #8B6E55;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.65rem;
+            color: #D4C2A8;
+        }
+        
+        .legend-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+        
+        .emotion-container {
+            position: relative;
+        }
+        
+        .word-cloud {
+            position: relative;
+            height: 80px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 4px 8px;
+            padding: 8px;
+            background: linear-gradient(135deg, rgba(43,31,26,0.6), rgba(74,55,40,0.3));
+            border: 1px solid #8B6E55;
+            border-radius: 6px;
+        }
+        
+        .word {
+            cursor: default;
+            transition: all 0.3s ease;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+        
+        .word:hover {
+            transform: scale(1.15);
+            text-shadow: 0 0 8px rgba(200,121,65,0.6);
+        }
+        
+        .w1 { font-size: 1.1rem; color: #F6E9D7; font-weight: bold; }
+        .w2 { font-size: 1rem; color: #C87941; font-weight: bold; }
+        .w3 { font-size: 0.9rem; color: #D4C2A8; }
+        .w4 { font-size: 0.85rem; color: #F6E9D7; }
+        .w5 { font-size: 0.95rem; color: #C87941; font-weight: bold; }
+        .w6 { font-size: 0.8rem; color: #D4C2A8; }
+        .w7 { font-size: 0.75rem; color: #F6E9D7; }
+        .w8 { font-size: 0.7rem; color: #C87941; }
+        .w9 { font-size: 0.65rem; color: #D4C2A8; }
+        .w10 { font-size: 0.6rem; color: #F6E9D7; }
+        
+        .network-modal-content {
+            background: linear-gradient(135deg, #3D2D26 0%, #2B1F1A 100%);
+            border: 2px solid #8B6E55;
+            border-radius: 12px;
+            max-width: 450px;
+            width: 90%;
+            max-height: 70vh;
+            overflow-y: auto;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+
+    <div class="fixed top-0 left-0 right-0 h-14 flex items-center justify-between px-6 z-50"
+         style="background: linear-gradient(180deg, rgba(43,31,26,0.98), rgba(43,31,26,0.85)); border-bottom: 2px solid #8B6E55;">
+        <div>
+            <h1 class="text-xl font-bold" style="color: #F6E9D7;">洛场村碉楼群</h1>
+            <p class="text-xs" style="color: #D4C2A8;">华侨建筑遗产数字化保护</p>
+        </div>
+        <div class="flex gap-2">
+            <button class="view-btn active" data-view="overhead">俯瞰视角</button>
+            <button class="view-btn" data-view="front">正面视角</button>
+            <button class="view-btn" data-view="detail">局部细节</button>
+        </div>
+    </div>
+
+    <div class="fixed left-4 top-20 bottom-28 w-72 z-40 overflow-y-auto space-y-4 p-2">
+        <div class="panel p-4">
+            <div class="panel-title">📊 碉楼年代分布</div>
+            <div id="eraChart" class="w-full h-40"></div>
+        </div>
+        
+        <div class="panel p-4">
+            <div class="panel-title">🧱 建筑材料占比</div>
+            <div id="materialChart" class="w-full h-40"></div>
+        </div>
+        
+        <div class="panel p-4">
+            <div class="panel-title">🏠 保护状态监测</div>
+            <div class="space-y-3 text-xs" style="color:#D4C2A8">
+                <div class="flex justify-between"><span>整体结构安全</span><span class="data-value">良好</span></div>
+                <div class="flex justify-between"><span>外墙保存状态</span><span class="data-value">一般</span></div>
+                <div class="flex justify-between"><span>内部完整度</span><span class="data-value">较好</span></div>
+                <div class="flex justify-between"><span>周边环境保护</span><span class="data-value" style="color:#C87941">需改善</span></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="fixed right-4 top-20 bottom-28 w-72 z-40 overflow-y-auto space-y-4 p-2">
+        <div class="panel p-4">
+            <div class="panel-title">🔗 「人 - 楼 - 物」关系网络</div>
+            <div class="relation-network" id="relationNetwork">
+                <svg class="network-svg" viewBox="0 0 280 200">
+                    <defs>
+                        <filter id="glow"><feGaussianBlur stdDeviation="2" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+                    </defs>
+                    <g class="network-center">
+                        <circle cx="140" cy="100" r="22" fill="#C87941" stroke="#F6E9D7" stroke-width="2" filter="url(#glow)"/>
+                        <text x="140" y="104" text-anchor="middle" fill="#F6E9D7" font-size="10" font-weight="bold">碉楼群</text>
+                    </g>
+                    <g class="person-nodes">
+                        <circle cx="60" cy="50" r="16" fill="#8B6E55" stroke="#D4C2A8" stroke-width="1.5" class="node-circle" data-type="person" data-id="0"/>
+                        <text x="60" y="54" text-anchor="middle" fill="#F6E9D7" font-size="8">江活钦</text>
+                        <line x1="75" y1="62" x2="120" y2="90" stroke="#C87941" stroke-width="1" class="network-line"/>
+                        
+                        <circle cx="60" cy="150" r="16" fill="#8B6E55" stroke="#D4C2A8" stroke-width="1.5" class="node-circle" data-type="person" data-id="1"/>
+                        <text x="60" y="154" text-anchor="middle" fill="#F6E9D7" font-size="8">江梓桥</text>
+                        <line x1="75" y1="142" x2="120" y2="110" stroke="#C87941" stroke-width="1" class="network-line"/>
+                        
+                        <circle cx="220" cy="50" r="16" fill="#8B6E55" stroke="#D4C2A8" stroke-width="1.5" class="node-circle" data-type="person" data-id="2"/>
+                        <text x="220" y="54" text-anchor="middle" fill="#F6E9D7" font-size="8">江彰柏</text>
+                        <line x1="205" y1="62" x2="160" y2="90" stroke="#C87941" stroke-width="1" class="network-line"/>
+                        
+                        <circle cx="220" cy="150" r="16" fill="#8B6E55" stroke="#D4C2A8" stroke-width="1.5" class="node-circle" data-type="person" data-id="3"/>
+                        <text x="220" y="154" text-anchor="middle" fill="#F6E9D7" font-size="8">江瑞莲</text>
+                        <line x1="205" y1="142" x2="160" y2="110" stroke="#C87941" stroke-width="1" class="network-line"/>
+                    </g>
+                    <g class="object-nodes">
+                        <circle cx="30" cy="100" r="12" fill="#4a3728" stroke="#C87941" stroke-width="1" class="node-circle" data-type="object" data-id="0"/>
+                        <text x="30" y="103" text-anchor="middle" fill="#D4C2A8" font-size="6">侨批</text>
+                        <line x1="42" y1="100" x2="118" y2="100" stroke="#C87941" stroke-width="0.8" stroke-dasharray="3,2" class="network-line"/>
+                        
+                        <circle cx="250" cy="100" r="12" fill="#4a3728" stroke="#C87941" stroke-width="1" class="node-circle" data-type="object" data-id="1"/>
+                        <text x="250" y="103" text-anchor="middle" fill="#D4C2A8" font-size="6">家书</text>
+                        <line x1="238" y1="100" x2="162" y2="100" stroke="#C87941" stroke-width="0.8" stroke-dasharray="3,2" class="network-line"/>
+                        
+                        <circle cx="140" cy="20" r="12" fill="#4a3728" stroke="#C87941" stroke-width="1" class="node-circle" data-type="object" data-id="2"/>
+                        <text x="140" y="23" text-anchor="middle" fill="#D4C2A8" font-size="6">旧照片</text>
+                        <line x1="140" y1="32" x2="140" y2="78" stroke="#C87941" stroke-width="0.8" stroke-dasharray="3,2" class="network-line"/>
+                    </g>
+                    <g class="place-nodes">
+                        <circle cx="100" cy="180" r="12" fill="#3d2d26" stroke="#D4C2A8" stroke-width="1" class="node-circle" data-type="place" data-id="0"/>
+                        <text x="100" y="183" text-anchor="middle" fill="#D4C2A8" font-size="6">旧金山</text>
+                        <line x1="108" y1="170" x2="128" y2="118" stroke="#C87941" stroke-width="0.6" stroke-dasharray="2,2" class="network-line"/>
+                        
+                        <circle cx="180" cy="180" r="12" fill="#3d2d26" stroke="#D4C2A8" stroke-width="1" class="node-circle" data-type="place" data-id="1"/>
+                        <text x="180" y="183" text-anchor="middle" fill="#D4C2A8" font-size="6">加拿大</text>
+                        <line x1="172" y1="170" x2="152" y2="118" stroke="#C87941" stroke-width="0.6" stroke-dasharray="2,2" class="network-line"/>
+                    </g>
+                </svg>
+                <div class="network-legend">
+                    <span class="legend-item"><span class="legend-dot" style="background:#C87941;"></span>碉楼</span>
+                    <span class="legend-item"><span class="legend-dot" style="background:#8B6E55;"></span>人物</span>
+                    <span class="legend-item"><span class="legend-dot" style="background:#4a3728;"></span>物件</span>
+                    <span class="legend-item"><span class="legend-dot" style="background:#3d2d26;"></span>地名</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="panel p-4">
+            <div class="panel-title">💌 侨批情感可视化</div>
+            <div class="emotion-container">
+                <div class="word-cloud" id="wordCloud">
+                    <span class="word w1">平安</span>
+                    <span class="word w2">家</span>
+                    <span class="word w3">寄钱</span>
+                    <span class="word w4">回乡</span>
+                    <span class="word w5">碉楼</span>
+                    <span class="word w6">挂念</span>
+                    <span class="word w7">美国</span>
+                    <span class="word w8">汇款</span>
+                    <span class="word w9">思念</span>
+                    <span class="word w10">亲人</span>
+                </div>
+                <div id="emotionCurve" class="w-full h-24 mt-2"></div>
+            </div>
+        </div>
+        
+        <div class="panel p-4">
+            <div class="panel-title">🏷️ 侨乡文化标签</div>
+            <div class="tag-cloud flex flex-wrap gap-2 justify-center">
+                <span>华侨文化</span><span>中西合璧</span><span>防御建筑</span><span>近代建筑</span><span>侨乡风情</span>
+                <span>建筑遗产</span><span>乡土建筑</span><span>移民历史</span><span>文化交融</span><span>碉楼集群</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="fixed bottom-0 left-0 right-0 h-24 z-50 flex items-center justify-center"
+         style="background: linear-gradient(0deg, rgba(43,31,26,0.98), rgba(43,31,26,0.85)); border-top: 2px solid #8B6E55;">
+        <div class="relative w-full max-w-4xl px-8">
+            <div class="timeline-line"></div>
+            <div class="flex justify-between relative">
+                <div class="flex flex-col items-center cursor-pointer timeline-item" data-era="qing">
+                    <div class="timeline-dot active"></div>
+                    <div class="mt-2 text-center"><div class="text-xs font-bold" style="color:#C87941">清末建造</div><div class="text-[10px]" style="color:#D4C2A8">1840-1911</div></div>
+                </div>
+                <div class="flex flex-col items-center cursor-pointer timeline-item" data-era="republic">
+                    <div class="timeline-dot"></div>
+                    <div class="mt-2 text-center"><div class="text-xs font-bold" style="color:#F6E9D7">民国鼎盛</div><div class="text-[10px]" style="color:#D4C2A8">1912-1949</div></div>
+                </div>
+                <div class="flex flex-col items-center cursor-pointer timeline-item" data-era="war">
+                    <div class="timeline-dot"></div>
+                    <div class="mt-2 text-center"><div class="text-xs font-bold" style="color:#F6E9D7">抗战时期</div><div class="text-[10px]" style="color:#D4C2A8">1937-1945</div></div>
+                </div>
+                <div class="flex flex-col items-center cursor-pointer timeline-item" data-era="modern">
+                    <div class="timeline-dot"></div>
+                    <div class="mt-2 text-center"><div class="text-xs font-bold" style="color:#F6E9D7">近代闲置</div><div class="text-[10px]" style="color:#D4C2A8">1949-2000</div></div>
+                </div>
+                <div class="flex flex-col items-center cursor-pointer timeline-item" data-era="digital">
+                    <div class="timeline-dot"></div>
+                    <div class="mt-2 text-center"><div class="text-xs font-bold" style="color:#F6E9D7">数字化保护</div><div class="text-[10px]" style="color:#C87941">2025-至今</div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="timelineModal" class="modal-overlay">
+        <div class="modal-content p-6 max-w-2xl">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <h3 id="timelineTitle" class="text-xl font-bold" style="color:#F6E9D7"></h3>
+                    <p id="timelinePeriod" class="text-xs mt-1" style="color:#C87941"></p>
+                </div>
+                <button id="closeTimelineModal" class="text-2xl hover:opacity-70" style="color:#8B6E55">×</button>
+            </div>
+            <div id="timelineImage" class="timeline-image-container mb-4">
+                <div class="timeline-image-placeholder">清末建造</div>
+            </div>
+            <div class="space-y-3">
+                <div>
+                    <h4 class="font-bold text-sm mb-1" style="color:#C87941">📍 地理人文</h4>
+                    <p id="timelineGeography" class="text-xs leading-relaxed" style="color:#D4C2A8"></p>
+                </div>
+                <div>
+                    <h4 class="font-bold text-sm mb-1" style="color:#C87941">📜 历史背景</h4>
+                    <p id="timelineHistory" class="text-xs leading-relaxed" style="color:#D4C2A8"></p>
+                </div>
+                <div>
+                    <h4 class="font-bold text-sm mb-1" style="color:#C87941">🏛️ 建筑特点</h4>
+                    <p id="timelineArchitecture" class="text-xs leading-relaxed" style="color:#D4C2A8"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="infoModal" class="modal-overlay">
+        <div class="modal-content p-6 max-w-2xl">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <h3 id="modalTitle" class="text-xl font-bold" style="color:#F6E9D7"></h3>
+                    <p id="modalEra" class="text-xs mt-1" style="color:#C87941"></p>
+                </div>
+                <button id="closeModal" class="text-2xl hover:opacity-70" style="color:#8B6E55">×</button>
+            </div>
+            <div id="imageContainer" class="relative w-full h-[280px] bg-[#1a1210] rounded-lg border-2 border-[#8B6E55] overflow-hidden flex items-center justify-center">
+                <button id="prevImage" class="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-black/60 hover:bg-black/80 text-white rounded-full z-10 text-lg">‹</button>
+                <img id="modalImage" class="w-full h-full object-contain">
+                <button id="nextImage" class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-black/60 hover:bg-black/80 text-white rounded-full z-10 text-lg">›</button>
+            </div>
+            <div id="imageIndicator" class="flex justify-center gap-2 mt-2"></div>
+            <div class="space-y-3">
+                <div>
+                    <h4 class="font-bold text-sm mb-1" style="color:#C87941">🏛️ 建筑特色</h4>
+                    <p id="modalFeatures" class="text-xs leading-relaxed" style="color:#D4C2A8"></p>
+                </div>
+                <div>
+                    <h4 class="font-bold text-sm mb-1" style="color:#C87941">📜 历史意义</h4>
+                    <p id="modalStory" class="text-xs leading-relaxed" style="color:#D4C2A8"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="qiaopiModal" class="modal-overlay">
+        <div class="qiaopi-modal-content">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <h3 id="qiaopiTitle" class="text-xl font-bold" style="color:#F6E9D7"></h3>
+                    <p id="qiaopiEra" class="text-xs mt-1" style="color:#C87941"></p>
+                </div>
+                <button id="closeQiaopiModal" class="text-2xl hover:opacity-70" style="color:#8B6E55">×</button>
+            </div>
+            <div id="qiaopiImage" class="qiaopi-detail-image">
+                <span style="color:#C87941;font-size:3rem;">✉</span>
+            </div>
+            <div>
+                <h4 class="font-bold text-sm mb-2" style="color:#C87941">📄 档案内容</h4>
+                <p id="qiaopiContent" class="text-xs leading-relaxed" style="color:#D4C2A8"></p>
+            </div>
+            <div class="qiaopi-detail-text">
+                <h4 class="font-bold text-sm mb-2" style="color:#C87941;">🏛️ 历史背景</h4>
+                <p id="qiaopiStory" class="text-xs leading-relaxed" style="color:#D4C2A8;"></p>
+            </div>
+        </div>
+    </div>
+
+    <div id="networkModal" class="modal-overlay">
+        <div class="network-modal-content">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <h3 id="networkTitle" class="text-lg font-bold" style="color:#F6E9D7"></h3>
+                    <p id="networkType" class="text-xs mt-1" style="color:#C87941"></p>
+                </div>
+                <button id="closeNetworkModal" class="text-2xl hover:opacity-70" style="color:#8B6E55">×</button>
+            </div>
+            <div id="networkImage" class="w-full h-32 rounded-lg mb-3 flex items-center justify-center" style="background:linear-gradient(135deg,#4a3728,#3d2d26);border:1px solid #8B6E55;"></div>
+            <div>
+                <p id="networkDesc" class="text-xs leading-relaxed" style="color:#D4C2A8"></p>
+            </div>
+        </div>
+    </div>
+
+    <div id="hotspotContainer" class="fixed top-0 left-0 w-full h-full z-30"></div>
+
+    <script>
+        let scene, camera, renderer, controls, model;
+        let hotspots = [];
+        let hotspotElements = [];
+
+        const qiaopiData = [
+            {
+                title: "江活钦家书",
+                era: "1932年 · 美国旧金山寄回",
+                content: "父亲大人膝下：男自抵美后，在餐馆做工，省吃俭用，月寄银圆二十元回家，以作家用及修缮碉楼之需。今闻家乡盗匪猖獗，望父亲大人小心保管银圆，加固碉楼防御工事...",
+                story: "此家书为华侨江活钦于1932年寄回，详述其在美生活状况及对家乡亲人的牵挂。信中提及汇款用于碉楼维护，反映华侨与家乡的经济纽带。",
+                image: "assets/qiaopi_0.jpg"
+            },
+            {
+                title: "江梓桥汇款单",
+                era: "1937年 · 侨批凭证",
+                content: "凭此单可在花都侨批局领取美元汇款二十元，用于建造飞机楼工程款项。汇款人：江梓桥，收款人：江氏家族，汇款地址：美国洛杉矶...",
+                story: "此侨批凭证见证了1937年江梓桥汇款建造飞机楼的历史。碉楼建造资金主要来源于海外华侨汇款，体现了侨乡建筑与海外经济的紧密联系。",
+                image: "assets/qiaopi_1.jpg"
+            },
+            {
+                title: "江彰柏书信",
+                era: "1925年 · 返乡探亲",
+                content: "吾弟彰柏自美洲归省，见家乡学校简陋，故出资改建为家塾，既供族中子弟读书，又可作防御之用。望后人珍惜此教育之地，传承华侨爱国爱乡之精神...",
+                story: "江彰柏书信表明其捐资建造彰柏家塾的初衷，既为教育也为防御。反映华侨对家乡教育事业的重视和贡献。",
+                image: "assets/qiaopi_2.jpg"
+            },
+            {
+                title: "彰德阁建档",
+                era: "1923年 · 建筑契约",
+                content: "立约人江氏家族与建筑承包商约定：建造彰德阁三层洋楼一座，工程款共计鹰洋三千元，分三期支付。建筑样式需融合中西，外部西洋风格，内部中式布局...",
+                story: "此建筑契约详细规定了彰德阁（美成小学钟楼）的建造规格和付款方式，是研究民国时期侨乡建筑的重要史料。",
+                image: "assets/qiaopi_3.jpg"
+            }
+        ];
+
+        const networkNodeData = {
+            person: [
+                { id: 0, name: "江活钦", title: "华侨先驱", desc: "洛场村著名华侨，1910年赴美国旧金山谋生。初期在餐馆做工，后经营杂货店。1925年汇款回家建造鹰扬堂（斑马楼），将西方建筑风格带回故乡。其家书详细记载了华侨在美生活状况及对家乡的牵挂，是研究侨乡历史的重要文献。", image: "👤" },
+                { id: 1, name: "江梓桥", title: "碉楼建造者", desc: "1937年从美国洛杉矶汇款建造飞机楼（江梓桥楼）。碉楼采用飞机造型设计，象征其对航空业的向往。抗战爆发后积极捐款支持抗日，是洛场村华侨爱国典范。", image: "👤" },
+                { id: 2, name: "江彰柏", title: "教育慈善家", desc: "旅美华侨，1920年代捐资建造彰柏家塾，将书塾与碉楼功能结合。既为族中子弟提供教育场所，又增强家乡防御能力。体现华侨重视教育、回报家乡的优良传统。", image: "👤" },
+                { id: 3, name: "江瑞莲", title: "抗战时期守护者", desc: "瑞莲楼建造者，碉楼在抗战时期发挥防御作用。楼体保留至今的弹痕见证了那段峥嵘岁月。江瑞莲及其家族成员在海外谋生同时心系故里，支援家乡建设。", image: "👤" }
+            ],
+            object: [
+                { id: 0, name: "侨批", title: "华侨汇款凭证", desc: "侨批是华侨寄回国内的汇款凭证和家书的合称。花都洛场村的侨批记录显示，碉楼建造资金主要来源于海外汇款。侨批见证了华侨与家乡的经济联系，是侨乡文化的重要载体。", image: "✉" },
+                { id: 1, name: "家书", title: "游子思乡之情", desc: "华侨家书记录了海外游子的思乡之情和汇款用途。信中常见'平安'、'挂念'、'寄钱'等关键词，体现了华侨对家人的牵挂和对家乡建设的支持。", image: "📜" },
+                { id: 2, name: "旧照片", title: "历史影像资料", desc: "碉楼旧照片记录了建筑原貌和华侨家庭生活。这些照片对于研究侨乡建筑风格演变、华侨海外生活状况具有重要史料价值，是数字化保护的重要内容。", image: "assets/oldphoto_1.jpg" }
+            ],
+            place: [
+                { id: 0, name: "旧金山", title: "美国西海岸侨乡", desc: "旧金山是早期广东华侨的主要聚居地。洛场村华侨多在此登陆入境，从事餐饮、洗衣、杂货等行业。他们将辛苦积攒的财富寄回故乡，建造了如今保留的碉楼群。", image: "🗽" },
+                { id: 1, name: "加拿大", title: "北美华侨新家园", desc: "部分洛场村华侨后来迁移至加拿大温哥华、多伦多等地。他们继续汇款支持家乡建设，并在碉楼建筑中融入北美建筑元素，形成独特的中西合璧风格。", image: "🍁" }
+            ]
+        };
+
+        const diaolouData = {
+            yingyangtang: {
+                name: "鹰扬堂（鹰楼/斑马楼）",
+                era: "华侨江活钦建造",
+                features: "三层半结构，红砖青砖交错斑马纹外墙，楼顶雄鹰浮雕装饰，是洛场村最具特色的碉楼之一",
+                story: "由华侨江活钦建造，斑马纹外墙彰显独特建筑风格，楼顶雄鹰象征华侨的远大志向与身份地位，是洛场村独特建筑代表",
+                images: ["assets/yingyangtang.jpg", "assets/yingyangtang2.jpg", "assets/yingyangtang3.jpg"],
+                position: { x: -8, y: 6, z: -5 }
+            },
+            feijilou: {
+                name: "江梓桥楼（飞机楼）",
+                era: "1937年（民国26年）",
+                features: "三层建筑，机翼形平面布局，欧式门柱设计，阳台壁画精美，体现中西合璧风格",
+                story: "民国时期高水平侨乡建筑的代表，飞机造型象征华侨对现代化的追求，是洛场村标志性建筑",
+                images: ["assets/feijilou.jpg", "assets/feijilou2.jpg"],
+                position: { x: 5, y: 5, z: 3 }
+            },
+            zhangbaijiashu: {
+                name: "彰柏家塾",
+                era: "1920年代",
+                features: "书塾与碉楼结合的独特建筑，配有小花园，现为书画工作室使用",
+                story: "由旅美华侨江彰柏资助建造，体现华侨重视家乡教育文化传承的理念",
+                images: ["assets/zhangbai.jpg", "assets/zhangbai2.jpg", "assets/zhangbai3.jpg"],
+                position: { x: -3, y: 4, z: 6 }
+            },
+            zhangdege: {
+                name: "彰德阁（美成小学钟楼）",
+                era: "1923年（民国12年），1997年重修",
+                features: "中西合璧风格钟楼，建筑面积约53平方米，兼具实用与装饰功能",
+                story: "美成小学地标性建筑，见证华侨热心家乡教育事业的历史，是侨乡文化的重要象征",
+                images: ["assets/zhangde.jpg", "assets/zhangde2.jpg"],
+                position: { x: 8, y: 4, z: -4 }
+            },
+            ruilianlou: {
+                name: "瑞莲楼",
+                era: "抗战时期",
+                features: "防御型碉楼设计，墙体至今保留抗战时期弹痕，历史痕迹清晰可见",
+                story: "抗日战争时期重要防御据点，墙体弹痕是民族抗争历史的鲜活记忆，具有重要历史价值",
+                images: ["assets/ruilian.jpg", "assets/ruilian2.jpg"],
+                position: { x: 0, y: 5, z: -6 }
+            }
+        };
+
+        const viewPositions = {
+            overhead: { camera: { x: 0, y: 35, z: 0.1 }, target: { x: 0, y: 0, z: 0 } },
+            front: { camera: { x: 0, y: 12, z: 22 }, target: { x: 0, y: 3, z: 0 } },
+            detail: { camera: { x: 8, y: 6, z: 8 }, target: { x: 2, y: 4, z: 2 } }
+        };
+
+        const eraTimeline = {
+            qing: { 
+                camera: { x: 15, y: 18, z: 15 }, 
+                target: { x: 0, y: 0, z: 0 },
+                title: "清末建造",
+                period: "1840-1911",
+                image: "assets/timeline_qing.jpg",
+                geography: "洛场村位于花都区花山镇，地处广府文化核心区域。该村始建于清朝乾隆年间，是典型的侨乡村落，村内水道纵横，土地肥沃，为村民出海谋生提供了物质基础。",
+                history: "鸦片战争后，大量广东沿海居民远赴海外谋生。洛场村村民从咸丰年间开始漂洋过海，主要前往美国旧金山、加拿大等地从事餐饮、洗衣等行业。他们将辛苦积攒的财富寄回家乡，开始建造碉楼作为家族荣耀的象征。",
+                architecture: "清末碉楼多为二至三层，采用青砖砌筑，结构坚固。建筑风格以中式为主，融合岭南传统建筑特色，注重防御功能，设有瞭望窗和射击孔。"
+            },
+            republic: { 
+                camera: { x: 18, y: 10, z: 0 }, 
+                target: { x: 0, y: 3, z: 0 },
+                title: "民国鼎盛",
+                period: "1912-1949",
+                image: "assets/timeline_republic.jpg",
+                geography: "民国时期，洛场村成为花都地区重要的侨乡。村内华侨通过海外汇款建造了大量中西合璧的碉楼，形成独特的侨乡风貌。村前池塘环绕，村后青山相依，自然环境优美。",
+                history: "民国时期是洛场村碉楼建造的鼎盛时期。华侨江活钦、江梓桥等人先后回乡建造了鹰扬堂、飞机楼等标志性建筑。这些碉楼不仅是居住场所，更是华侨身份地位的象征，见证了洛场村的辉煌历史。",
+                architecture: "民国碉楼呈现中西合璧风格，采用红砖与青砖交错砌筑，形成独特的斑马纹外墙。建筑装饰华丽，楼顶常有浮雕装饰，如鹰扬堂的雄鹰浮雕，彰显主人的远大志向。"
+            },
+            war: { 
+                camera: { x: 0, y: 15, z: 18 }, 
+                target: { x: 0, y: 0, z: 0 },
+                title: "抗战时期",
+                period: "1937-1945",
+                image: "assets/timeline_war.jpg",
+                geography: "抗日战争时期，洛场村位于东江纵队活动区域。碉楼群在战乱中发挥了重要的防御作用，成为村民躲避战火的安全场所。",
+                history: "抗战爆发后，洛场村华侨积极支援祖国抗日，纷纷捐款捐物。村内碉楼成为抗日据点和避难所，墙体至今仍保留着战争时期的弹痕，见证了那段峥嵘岁月。",
+                architecture: "战时碉楼注重防御功能，墙体加厚，窗户缩小并加装铁栅。部分碉楼设有地道连接，形成完整的防御体系。"
+            },
+            modern: { 
+                camera: { x: -12, y: 8, z: 12 }, 
+                target: { x: 0, y: 2, z: 0 },
+                title: "近代闲置",
+                period: "1949-2000",
+                image: "assets/timeline_modern.jpg",
+                geography: "新中国成立后，洛场村逐渐恢复平静。随着经济发展，村民陆续搬出碉楼，部分建筑因年久失修成为危房。",
+                history: "改革开放后，村民生活水平提高，纷纷在村内新建房屋，传统碉楼逐渐被闲置。由于缺乏维护，部分碉楼出现墙体剥落、屋顶漏水等问题。",
+                architecture: "这一时期碉楼基本保持原貌，但缺乏修缮。部分碉楼被用作仓库或杂物间，建筑价值未被充分认识。"
+            },
+            digital: { 
+                camera: { x: 0, y: 25, z: 0 }, 
+                target: { x: 0, y: 0, z: 0 },
+                title: "数字化保护",
+                period: "2025-至今",
+                image: "assets/timeline_digital.jpg",
+                geography: "2025年起，洛场村启动数字化保护项目，利用三维扫描、虚拟现实等技术对碉楼群进行数字化存档和展示，让更多人了解侨乡文化。",
+                history: "随着文旅融合发展，洛场村碉楼群重新受到重视。数字化保护项目通过3D建模、虚拟漫游等技术，将碉楼文化推向更广泛的受众，实现文化遗产的活态传承。",
+                architecture: "数字化保护采用非接触式测量技术，在不损伤建筑的前提下完成数据采集。同时对濒危建筑进行修复，恢复其历史风貌。"
+            }
+        };
+
+        function init() {
+            const container = document.getElementById('canvas-container');
+            
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x2B1F1A);
+            
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 1000);
+            camera.position.set(15, 20, 15);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.shadowMap.enabled = true;
+            container.appendChild(renderer.domElement);
+            
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enabled = true;
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.minDistance = 5;
+            controls.maxDistance = 60;
+            controls.target.set(0, 3, 0);
+            controls.enablePan = true;
+            controls.enableRotate = true;
+            controls.enableZoom = true;
+            
+            scene.add(new THREE.AmbientLight(0xF6E9D7, 0.4));
+            
+            const mainLight = new THREE.DirectionalLight(0xE8D5B5, 0.9);
+            mainLight.position.set(15, 25, 15);
+            mainLight.castShadow = true;
+            scene.add(mainLight);
+            
+            const fillLight = new THREE.DirectionalLight(0xC87941, 0.3);
+            fillLight.position.set(-10, 10, -10);
+            scene.add(fillLight);
+            
+            const ground = new THREE.Mesh(
+                new THREE.PlaneGeometry(80, 80),
+                new THREE.MeshLambertMaterial({ color: 0x3D2D26 })
+            );
+            ground.rotation.x = -Math.PI / 2;
+            ground.position.y = -0.1;
+            ground.receiveShadow = true;
+            scene.add(ground);
+            
+            scene.add(new THREE.GridHelper(80, 40, 0x5C4033, 0x3D2D26));
+            
+            loadGLBModel();
+            initCharts();
+            setupEventListeners();
+            animate();
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.timeline-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    document.querySelectorAll('.timeline-dot').forEach(d => d.classList.remove('active'));
+                    item.querySelector('.timeline-dot').classList.add('active');
+                    const era = item.dataset.era;
+                    animateCamera(eraTimeline[era].camera, eraTimeline[era].target);
+                    showTimelineDetail(era);
+                });
+            });
+        });
+
+        function loadGLBModel() {
+            const loader = new THREE.GLTFLoader();
+            loader.load('models/luochang.glb',
+                (gltf) => {
+                    model = gltf.scene;
+                    model.position.y = 0;
+                    scene.add(model);
+                    model.traverse((child) => {
+                        if (child.isMesh) { child.castShadow = true; child.receiveShadow = true; }
+                    });
+                    initHotspots();
+                },
+                null,
+                () => createPlaceholderModel()
+            );
+        }
+
+        function createPlaceholderModel() {
+            const group = new THREE.Group();
+            const baseMat = new THREE.MeshLambertMaterial({ color: 0x8B6E55 });
+            const accentMat = new THREE.MeshLambertMaterial({ color: 0xC87941 });
+            const roofMat = new THREE.MeshLambertMaterial({ color: 0x5C4033 });
+
+            const yingyangtang = new THREE.Group();
+            yingyangtang.add(new THREE.Mesh(new THREE.BoxGeometry(5, 8, 5), baseMat));
+            yingyangtang.children[0].position.y = 4;
+            const yroof = new THREE.Mesh(new THREE.ConeGeometry(2.5, 2.5, 4), roofMat);
+            yroof.position.y = 9.3;
+            yroof.rotation.y = Math.PI / 4;
+            yingyangtang.add(yroof);
+            yingyangtang.position.set(-8, 0, -5);
+            group.add(yingyangtang);
+
+            const feijilou = new THREE.Group();
+            feijilou.add(new THREE.Mesh(new THREE.BoxGeometry(6, 7, 3), baseMat));
+            feijilou.children[0].position.y = 3.5;
+            const fwing = new THREE.Mesh(new THREE.BoxGeometry(2, 0.3, 8), accentMat);
+            fwing.position.set(0, 7.2, 0);
+            feijilou.add(fwing);
+            feijilou.position.set(5, 0, 3);
+            group.add(feijilou);
+
+            const zhangbai = new THREE.Group();
+            zhangbai.add(new THREE.Mesh(new THREE.BoxGeometry(4, 6, 4), baseMat));
+            zhangbai.children[0].position.y = 3;
+            zhangbai.add(new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.5, 1.5), roofMat));
+            zhangbai.children[1].position.y = 6.8;
+            zhangbai.position.set(-3, 0, 6);
+            group.add(zhangbai);
+
+            const zhangdege = new THREE.Group();
+            zhangdege.add(new THREE.Mesh(new THREE.BoxGeometry(3, 7, 3), baseMat));
+            zhangdege.children[0].position.y = 3.5;
+            zhangdege.add(new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.2, 2, 8), roofMat));
+            zhangdege.children[1].position.y = 7.5;
+            zhangdege.position.set(8, 0, -4);
+            group.add(zhangdege);
+
+            const ruilianlou = new THREE.Group();
+            ruilianlou.add(new THREE.Mesh(new THREE.BoxGeometry(4, 9, 4), baseMat));
+            ruilianlou.children[0].position.y = 4.5;
+            ruilianlou.add(new THREE.Mesh(new THREE.BoxGeometry(3, 0.5, 3), accentMat));
+            ruilianlou.children[1].position.y = 9.3;
+            ruilianlou.position.set(0, 0, -6);
+            group.add(ruilianlou);
+
+            model = group;
+            scene.add(model);
+            initHotspots();
+        }
+
+        function showTimelineDetail(era) {
+            const data = eraTimeline[era];
+            document.getElementById('timelineTitle').textContent = data.title;
+            document.getElementById('timelinePeriod').textContent = data.period;
+            document.getElementById('timelineGeography').textContent = data.geography;
+            document.getElementById('timelineHistory').textContent = data.history;
+            document.getElementById('timelineArchitecture').textContent = data.architecture;
+            
+            const container = document.getElementById('timelineImage');
+            const img = new Image();
+            img.onload = () => {
+                container.innerHTML = '';
+                container.appendChild(img);
+            };
+            img.onerror = () => {
+                container.innerHTML = `<div class="timeline-image-placeholder">${data.title}</div>`;
+            };
+            img.src = data.image;
+            
+            document.getElementById('timelineModal').style.display = 'flex';
+        }
+
+        function initHotspots() {
+            hotspots = Object.values(diaolouData);
+            const container = document.getElementById('hotspotContainer');
+            hotspots.forEach((hotspot, index) => {
+                const dot = document.createElement('div');
+                dot.className = 'hotspot';
+                dot.dataset.index = index;
+                dot.addEventListener('click', () => showHotspotInfo(index));
+                container.appendChild(dot);
+                hotspotElements.push(dot);
+            });
+        }
+
+        function updateHotspotPositions() {
+            if (!camera) return;
+            hotspotElements.forEach((dot, index) => {
+                const pos = new THREE.Vector3(
+                    hotspots[index].position.x,
+                    hotspots[index].position.y,
+                    hotspots[index].position.z
+                ).project(camera);
+                
+                const x = (pos.x * 0.5 + 0.5) * window.innerWidth;
+                const y = (-pos.y * 0.5 + 0.5) * window.innerHeight;
+                
+                dot.style.left = x + 'px';
+                dot.style.top = y + 'px';
+                dot.style.display = pos.z < 1 ? 'block' : 'none';
+            });
+        }
+
+        let currentImages = [];
+        let currentImageIndex = 0;
+
+        function showHotspotInfo(index) {
+            const data = hotspots[index];
+            document.getElementById('modalTitle').textContent = data.name;
+            document.getElementById('modalEra').textContent = data.era;
+            document.getElementById('modalFeatures').textContent = data.features;
+            document.getElementById('modalStory').textContent = data.story;
+            
+            currentImages = data.images || [data.image];
+            currentImageIndex = 0;
+            
+            updateModalImage();
+            document.getElementById('infoModal').style.display = 'flex';
+        }
+
+        function updateModalImage() {
+            const img = document.getElementById('modalImage');
+            const container = document.getElementById('imageContainer');
+            const indicator = document.getElementById('imageIndicator');
+            
+            if (currentImages.length > 1) {
+                document.getElementById('prevImage').style.display = 'flex';
+                document.getElementById('nextImage').style.display = 'flex';
+                
+                indicator.innerHTML = currentImages.map((_, i) => 
+                    `<span class="w-2 h-2 rounded-full ${i === currentImageIndex ? 'bg-[#C87941]' : 'bg-[#8B6E55]'}"></span>`
+                ).join('');
+            } else {
+                document.getElementById('prevImage').style.display = 'none';
+                document.getElementById('nextImage').style.display = 'none';
+                indicator.innerHTML = '';
+            }
+            
+            container.style.height = '320px';
+            const imgPath = currentImages[currentImageIndex];
+            img.onload = () => {
+                const containerWidth = container.offsetWidth - 32;
+                const scale = Math.min(containerWidth / img.width, 1);
+                const newHeight = Math.min(img.height * scale + 16, 500);
+                container.style.height = newHeight + 'px';
+            };
+            img.onerror = () => {
+                img.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"%3E%3Crect fill="%233d2d26" width="200" height="200"/%3E%3Ctext fill="%238B6E55" font-family="sans-serif" font-size="14" x="50%25" y="50%25" text-anchor="middle" dominant-baseline="middle"%3E图片加载失败%3C/text%3E%3C/svg%3E';
+            };
+            img.src = imgPath;
+        }
+
+        function nextImage() {
+            if (currentImages.length > 1) {
+                currentImageIndex = (currentImageIndex + 1) % currentImages.length;
+                updateModalImage();
+            }
+        }
+
+        function prevImage() {
+            if (currentImages.length > 1) {
+                currentImageIndex = (currentImageIndex - 1 + currentImages.length) % currentImages.length;
+                updateModalImage();
+            }
+        }
+
+        function initCharts() {
+            echarts.init(document.getElementById('eraChart')).setOption({
+                tooltip: { trigger: 'axis' },
+                grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+                xAxis: { type: 'category', data: ['清末', '民国初', '民国鼎盛', '抗战前', '现代修复'], axisLine: { lineStyle: { color: '#8B6E55' } }, axisLabel: { color: '#D4C2A8', fontSize: 10 } },
+                yAxis: { type: 'value', axisLine: { lineStyle: { color: '#8B6E55' } }, axisLabel: { color: '#D4C2A8', fontSize: 10 }, splitLine: { lineStyle: { color: '#5C4033' } } },
+                series: [{ data: [4, 8, 15, 6, 3], type: 'bar', itemStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: '#C87941' }, { offset: 1, color: '#8B6E55' }]), borderRadius: [4, 4, 0, 0] } }]
+            });
+
+            echarts.init(document.getElementById('materialChart')).setOption({
+                tooltip: { trigger: 'item', formatter: '{b}: {c}%' },
+                legend: { orient: 'vertical', right: 0, top: 'center', textStyle: { color: '#D4C2A8', fontSize: 10 } },
+                series: [{ radius: ['40%', '70%'], center: ['40%', '50%'], type: 'pie', label: { show: false }, labelLine: { show: false }, data: [
+                    { value: 45, name: '青砖', itemStyle: { color: '#8B6E55' } },
+                    { value: 25, name: '红砖', itemStyle: { color: '#C87941' } },
+                    { value: 18, name: '混凝土', itemStyle: { color: '#5C4033' } },
+                    { value: 7, name: '石材', itemStyle: { color: '#D4C2A8' } },
+                    { value: 5, name: '木材', itemStyle: { color: '#3D2D26' } }
+                ]}]
+            });
+
+            echarts.init(document.getElementById('emotionCurve')).setOption({
+                tooltip: { trigger: 'axis', backgroundColor: 'rgba(43,31,26,0.95)', borderColor: '#8B6E55', textStyle: { color: '#D4C2A8' } },
+                grid: { left: '3%', right: '4%', bottom: '3%', top: '10%', containLabel: true },
+                xAxis: { type: 'category', boundaryGap: false, data: ['1923', '1926', '1929', '1932', '1935', '1938', '1940'], axisLine: { lineStyle: { color: '#8B6E55' } }, axisLabel: { color: '#D4C2A8', fontSize: 9 } },
+                yAxis: { type: 'value', min: 0, max: 100, axisLine: { lineStyle: { color: '#8B6E55' } }, axisLabel: { color: '#D4C2A8', fontSize: 9 }, splitLine: { lineStyle: { color: '#5C4033' } } },
+                series: [{ data: [45, 58, 72, 85, 70, 55, 40], type: 'line', smooth: true, areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: 'rgba(200,121,65,0.5)' }, { offset: 1, color: 'rgba(200,121,65,0.05)' }]) }, lineStyle: { color: '#C87941', width: 2 }, itemStyle: { color: '#C87941' } }]
+            });
+
+            window.addEventListener('resize', () => {
+                echarts.init(document.getElementById('eraChart')).resize();
+                echarts.init(document.getElementById('materialChart')).resize();
+                echarts.init(document.getElementById('emotionCurve')).resize();
+            });
+        }
+
+        function setupEventListeners() {
+            document.querySelectorAll('.view-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    animateCamera(viewPositions[btn.dataset.view].camera, viewPositions[btn.dataset.view].target);
+                });
+            });
+
+            document.getElementById('closeModal').addEventListener('click', () => {
+                document.getElementById('infoModal').style.display = 'none';
+            });
+
+            document.getElementById('closeTimelineModal').addEventListener('click', () => {
+                document.getElementById('timelineModal').style.display = 'none';
+            });
+
+            document.getElementById('timelineModal').addEventListener('click', (e) => {
+                if (e.target.id === 'timelineModal') document.getElementById('timelineModal').style.display = 'none';
+            });
+
+            document.getElementById('prevImage').addEventListener('click', prevImage);
+            document.getElementById('nextImage').addEventListener('click', nextImage);
+
+            document.getElementById('infoModal').addEventListener('click', (e) => {
+                if (e.target.id === 'infoModal') document.getElementById('infoModal').style.display = 'none';
+            });
+
+            document.getElementById('closeQiaopiModal').addEventListener('click', () => {
+                document.getElementById('qiaopiModal').style.display = 'none';
+            });
+
+            document.getElementById('qiaopiModal').addEventListener('click', (e) => {
+                if (e.target.id === 'qiaopiModal') document.getElementById('qiaopiModal').style.display = 'none';
+            });
+
+            document.getElementById('closeNetworkModal').addEventListener('click', () => {
+                document.getElementById('networkModal').style.display = 'none';
+            });
+
+            document.getElementById('networkModal').addEventListener('click', (e) => {
+                if (e.target.id === 'networkModal') document.getElementById('networkModal').style.display = 'none';
+            });
+
+            initNetworkNodes();
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+        }
+
+        function initNetworkNodes() {
+            document.querySelectorAll('.node-circle').forEach(node => {
+                node.addEventListener('click', () => {
+                    const type = node.dataset.type;
+                    const id = parseInt(node.dataset.id);
+                    showNetworkModal(type, id);
+                });
+            });
+        }
+
+        function showNetworkModal(type, id) {
+            const typeNames = { person: '👤 人物', object: '📦 物件', place: '📍 地点' };
+            const data = networkNodeData[type][id];
+            document.getElementById('networkTitle').textContent = data.name;
+            document.getElementById('networkType').textContent = typeNames[type] + ' · ' + data.title;
+            document.getElementById('networkDesc').textContent = data.desc;
+            const imgEl = document.getElementById('networkImage');
+            if (data.image && (data.image.includes('.jpg') || data.image.includes('.png'))) {
+                imgEl.innerHTML = `<img src="${data.image}" style="max-width:100%;max-height:128px;object-fit:contain;">`;
+            } else {
+                imgEl.innerHTML = `<span style="font-size:2.5rem;">${data.image}</span>`;
+            }
+            document.getElementById('networkModal').style.display = 'flex';
+        }
+
+        function showQiaopiModal(index) {
+            const data = qiaopiData[index];
+            document.getElementById('qiaopiTitle').textContent = data.title;
+            document.getElementById('qiaopiEra').textContent = data.era;
+            document.getElementById('qiaopiContent').textContent = data.content;
+            document.getElementById('qiaopiStory').textContent = data.story;
+            const imgEl = document.getElementById('qiaopiImage');
+            if (data.image && data.image !== 'assets/qiaopi_0.jpg') {
+                imgEl.style.backgroundImage = `url(${data.image})`;
+                imgEl.innerHTML = '';
+            } else {
+                imgEl.style.backgroundImage = 'none';
+                imgEl.innerHTML = '<span style="color:#C87941;font-size:3rem;">✉</span>';
+            }
+            document.getElementById('qiaopiModal').style.display = 'flex';
+        }
+
+        function animateCamera(targetCamera, targetLookAt) {
+            const startCamera = { x: camera.position.x, y: camera.position.y, z: camera.position.z };
+            const startTarget = { x: controls.target.x, y: controls.target.y, z: controls.target.z };
+            const duration = 1200;
+            const startTime = Date.now();
+
+            function update() {
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const eased = 1 - Math.pow(1 - progress, 3);
+                
+                camera.position.x = startCamera.x + (targetCamera.x - startCamera.x) * eased;
+                camera.position.y = startCamera.y + (targetCamera.y - startCamera.y) * eased;
+                camera.position.z = startCamera.z + (targetCamera.z - startCamera.z) * eased;
+                
+                controls.target.x = startTarget.x + (targetLookAt.x - startTarget.x) * eased;
+                controls.target.y = startTarget.y + (targetLookAt.y - startTarget.y) * eased;
+                controls.target.z = startTarget.z + (targetLookAt.z - startTarget.z) * eased;
+                
+                if (progress < 1) requestAnimationFrame(update);
+            }
+            update();
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            updateHotspotPositions();
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
