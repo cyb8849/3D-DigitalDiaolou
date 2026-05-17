@@ -1047,26 +1047,8 @@
 
         let currentImages = [];
         let currentImageIndex = 0;
-        let currentRequestId = 0;
-        const preloadedImages = {};
 
-        function preloadImage(src) {
-            return new Promise((resolve, reject) => {
-                if (preloadedImages[src]) {
-                    resolve(preloadedImages[src]);
-                    return;
-                }
-                const img = new Image();
-                img.onload = () => {
-                    preloadedImages[src] = img;
-                    resolve(img);
-                };
-                img.onerror = reject;
-                img.src = src;
-            });
-        }
-
-        async function showHotspotInfo(index) {
+        function showHotspotInfo(index) {
             const data = hotspots[index];
             document.getElementById('modalTitle').textContent = data.name;
             document.getElementById('modalEra').textContent = data.era;
@@ -1075,17 +1057,6 @@
             
             currentImages = data.images || [data.image];
             currentImageIndex = 0;
-            
-            const spinner = document.getElementById('loadingSpinner');
-            spinner.style.display = 'flex';
-            
-            for (const imgPath of currentImages) {
-                try {
-                    await preloadImage(imgPath + '?v=' + Date.now());
-                } catch (e) {
-                    console.warn('Failed to preload:', imgPath);
-                }
-            }
             
             updateModalImage();
             document.getElementById('infoModal').style.display = 'flex';
@@ -1096,7 +1067,6 @@
             const container = document.getElementById('imageContainer');
             const indicator = document.getElementById('imageIndicator');
             const spinner = document.getElementById('loadingSpinner');
-            const requestId = ++currentRequestId;
             
             if (currentImages.length > 1) {
                 document.getElementById('prevImage').style.display = 'flex';
@@ -1114,10 +1084,8 @@
             container.style.height = '320px';
             spinner.style.display = 'flex';
             const imgPath = currentImages[currentImageIndex];
-            const cacheBustedPath = imgPath + '?v=' + Date.now();
             
             img.onload = () => {
-                if (requestId !== currentRequestId) return;
                 spinner.style.display = 'none';
                 const containerWidth = container.offsetWidth - 32;
                 const scale = Math.min(containerWidth / img.width, 1);
@@ -1125,11 +1093,10 @@
                 container.style.height = newHeight + 'px';
             };
             img.onerror = () => {
-                if (requestId !== currentRequestId) return;
                 spinner.style.display = 'none';
                 img.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"%3E%3Crect fill="%233d2d26" width="200" height="200"/%3E%3Ctext fill="%238B6E55" font-family="sans-serif" font-size="14" x="50%25" y="50%25" text-anchor="middle" dominant-baseline="middle"%3E图片加载失败%3C/text%3E%3C/svg%3E';
             };
-            img.src = cacheBustedPath;
+            img.src = imgPath + '?t=' + currentImageIndex;
         }
 
         function nextImage() {
