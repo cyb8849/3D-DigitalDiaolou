@@ -42,6 +42,8 @@ git fetch origin main && git checkout -f origin/main
 
 注意：首次执行会覆盖服务器上的文件，确保远端已是最新版本。
 
+> 实测（2026-10-22）服务器出口访问 GitHub 经常超时，`git fetch` 可能卡住失败；此时改用方式三。中转发布时若整目录上传失败，可只打包有变化的文件（本次 5 个文件共 3.3MB 一次成功）。
+
 ### 方式三：临时中转（本机无法直连 GitHub 时）
 1. 在 WorkBuddy 里临时发布项目，拿到带 `sharecode` 的链接
 2. 在服务器上按文件逐个拉取：
@@ -54,11 +56,12 @@ git fetch origin main && git checkout -f origin/main
 
 ## 已验证
 
-- 首页 200（116,445B）
-- `models/*.glb` 三个文件与本地 **md5 完全一致**
+- 首页 200（117,252B，2026-10-22 压缩模型版本）
+- `models/*.glb` 三个文件与本地 **md5 完全一致**（压缩后合计 3.3MB）
 - `vendor/*.js`、`assets/*.webp` 与本地 md5 一致
-- gzip 生效：index 116KB → 32KB，three.js 589KB → 151KB
+- gzip 生效：index 117KB → 32KB，three.js 589KB → 151KB
 - 缺失静态资源返回 404，favicon 返回 204
+- 覆盖部署前旧文件已备份至服务器 `/root/diaolou-bak-20261022230837`
 
 ## 已知限制
 
