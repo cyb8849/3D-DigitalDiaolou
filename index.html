@@ -1086,11 +1086,13 @@ body.mode-focus .timeline{display:none}
 /* 逐楼真实 GLB 模型登记表（可选）。
    把 glb 放入 models/ 并在此登记即可，未登记的楼继续使用数字体块占位。
    - overviewScale / rotY：全村概览中的缩放与朝向（真实米制模型远大于风格化体块）
+   - 三座模型的正面均朝模型自身 +Z，概览默认机位在 (+X,+Z) 45° 方向，
+     故 rotY≈+45° 让正面朝向观众，而不是把后墙对着镜头
    - 聚焦（逐楼鉴赏）模式恒按真实尺度 1:1 展示 */
 const BUILDING_MODELS = {
-    feijilou:      { url: 'models/feijilou.glb',      overviewScale: 0.26, rotY: -Math.PI * 0.75 },
-    yingyangtang:  { url: 'models/yingyangtang.glb',  overviewScale: 0.38, rotY: 0 },
-    zhangbaijiashu:{ url: 'models/zhangbaijiashu.glb',overviewScale: 0.55, rotY: 0 }
+    feijilou:      { url: 'models/feijilou.glb',      overviewScale: 0.26, rotY: Math.PI * 0.25 },
+    yingyangtang:  { url: 'models/yingyangtang.glb',  overviewScale: 0.38, rotY: Math.PI * 0.25 },
+    zhangbaijiashu:{ url: 'models/zhangbaijiashu.glb',overviewScale: 0.55, rotY: Math.PI * 0.25 }
 };
 
 const qiaopiData = [
@@ -1579,6 +1581,7 @@ function loadBuildingModels() {
                         const ph = monumentsById[key];
                         if (ph) ph.visible = false;
                         entry.overviewObj.visible = true;
+                        refreshHotspotAnchors();   // 标签改挂到真模型屋顶
                     }
                     // 聚焦模式下恰好选中这座楼：立即换成真模型并重新取景
                     if (viewMode === 'focus' && window.refreshFocus) window.refreshFocus();
@@ -1630,10 +1633,30 @@ function mountMonuments() {
     model = buildMonuments();
     monumentsGroup = model;
     scene.add(model);
+    refreshHotspotAnchors();
     initHotspots();
     markDirty();
     setTimeout(hideBoot, 260);
     loadBuildingModels();
+}
+
+/* 热点锚点跟着「画面里真正显示的那一版建筑」走：
+   已载入真模型的楼用真模型包围盒，仍是体块的楼用体块。
+   竖直方向取立面上部（约 62% 高）而不是屋顶上空，否则俯视时标签会飘到后面更高的楼上。 */
+function refreshHotspotAnchors() {
+    if (viewMode !== 'overview') return;
+    Object.keys(diaolouData).forEach((key) => {
+        const item = diaolouData[key];
+        const e = gltfCache[key];
+        const obj = (e && e.state === 'ready' && e.overviewObj) ? e.overviewObj : monumentsById[key];
+        if (!obj) return;
+        const box = new THREE.Box3().setFromObject(obj);
+        if (box.isEmpty()) return;
+        const c = box.getCenter(new THREE.Vector3());
+        const h = box.max.y - box.min.y;
+        item.position = { x: c.x, y: box.min.y + h * 0.62, z: c.z };
+    });
+    markDirty();
 }
 
 /* ── 聚焦模式（逐楼鉴赏）场景切换 ───────────────────────── */
@@ -1674,6 +1697,7 @@ function exitFocusVisual() {
         const m = monumentsById[k];
         if (m && m.userData.home) m.position.copy(m.userData.home);
     });
+    refreshHotspotAnchors();   // 回到概览后按归位的体块/真模型重算标签锚点
     markDirty();
 }
 
