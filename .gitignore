@@ -1,0 +1,14 @@
+# 内部工作目录：缓存、记忆、校验脚本，不参与发布
+.workbuddy/
+
+# 应用发布标记（WorkBuddy 生成）
+.wbapp_*.genie
+
+# 本地备份与预览图，不进仓库
+index.legacy.html
+cloud-layout-preview.png
+
+# 系统与编辑器
+.DS_Store
+Thumbs.db
+.idea/

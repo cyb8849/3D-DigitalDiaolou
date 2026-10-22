@@ -1,1281 +1,2493 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>洛场村碉楼群 - 华侨建筑遗产数字化保护</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: #2B1F1A; font-family: 'Microsoft YaHei', serif; overflow: hidden; }
-        #canvas-container { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1; }
-        #hotspotContainer { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 30; pointer-events: none; }
-        
-        .panel {
-            background: linear-gradient(135deg, rgba(43,31,26,0.95) 0%, rgba(60,44,38,0.9) 100%);
-            border: 2px solid #8B6E55;
-            border-radius: 8px;
-            backdrop-filter: blur(10px);
-        }
-        
-        .panel-title {
-            color: #F6E9D7;
-            font-size: 1rem;
-            font-weight: bold;
-            border-bottom: 1px solid #8B6E55;
-            padding-bottom: 8px;
-            margin-bottom: 12px;
-        }
-        
-        .data-value { color: #C87941; font-weight: bold; }
-        
-        .hotspot {
-            position: absolute;
-            width: 20px;
-            height: 20px;
-            background: radial-gradient(circle, #C87941 0%, #8B6E55 60%, transparent 100%);
-            border-radius: 50%;
-            cursor: pointer;
-            animation: pulse 2s infinite;
-            transform: translate(-50%, -50%);
-            z-index: 100;
-            pointer-events: auto;
-        }
-        
-        .hotspot::after {
-            content: '';
-            position: absolute;
-            top: 50%; left: 50%;
-            width: 8px; height: 8px;
-            background: #F6E9D7;
-            border-radius: 50%;
-            transform: translate(-50%, -50%);
-        }
-        
-        @keyframes pulse {
-            0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
-            50% { transform: translate(-50%, -50%) scale(1.4); opacity: 0.6; }
-        }
-        
-        .timeline-dot {
-            width: 16px; height: 16px;
-            background: #8B6E55;
-            border: 2px solid #C87941;
-            border-radius: 50%;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        
-        .timeline-dot:hover, .timeline-dot.active {
-            background: #C87941;
-            transform: scale(1.3);
-            box-shadow: 0 0 12px rgba(200,121,65,0.6);
-        }
-        
-        .timeline-line {
-            position: absolute;
-            top: 50%; left: 0; right: 0;
-            height: 2px;
-            background: linear-gradient(90deg, #8B6E55 0%, #C87941 50%, #8B6E55 100%);
-            z-index: -1;
-            transform: translateY(-50%);
-        }
-        
-        .modal-overlay {
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: rgba(0,0,0,0.85);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-            backdrop-filter: blur(5px);
-        }
-        
-        .modal-content {
-            background: linear-gradient(135deg, #3D2D26 0%, #2B1F1A 100%);
-            border: 2px solid #8B6E55;
-            border-radius: 12px;
-            max-width: 950px;
-            width: 95%;
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-        
-        .timeline-image-container {
-            position: relative;
-            width: 100%;
-            height: 280px;
-            background: #1a1210;
-            border: 2px solid #8B6E55;
-            border-radius: 8px;
-            overflow: hidden;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-        }
-        
-        .timeline-image-container img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-        }
-        
-        .timeline-image-placeholder {
-            color: #8B6E55;
-            font-size: 1rem;
-            text-align: center;
-            padding: 40px;
-            font-style: italic;
-            background: linear-gradient(135deg, rgba(74,55,40,0.3), rgba(43,31,26,0.5));
-            border-radius: 4px;
-            border: 1px dashed #8B6E55;
-        }
-        
-        .progress-bar {
-            background: #1a1210;
-            border: 1px solid #8B6E55;
-            border-radius: 8px;
-            height: 18px;
-            overflow: hidden;
-        }
-        
-        .progress-fill {
-            background: linear-gradient(90deg, #C87941, #E8A862);
-            height: 100%;
-            transition: width 0.8s ease;
-        }
-        
-        .view-btn {
-            background: rgba(139,110,85,0.4);
-            border: 1px solid #8B6E55;
-            color: #F6E9D7;
-            padding: 6px 14px;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-size: 0.85rem;
-        }
-        
-        .view-btn:hover, .view-btn.active {
-            background: #C87941;
-            border-color: #C87941;
-        }
-        
-        .tag-cloud span {
-            background: rgba(139,110,85,0.3);
-            border: 1px solid #8B6E55;
-            padding: 4px 10px;
-            border-radius: 4px;
-            color: #D4C2A8;
-            font-size: 0.8rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        
-        .tag-cloud span:hover {
-            background: #C87941;
-            color: #F6E9D7;
-        }
-        
-        .qiaopi-card {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            padding: 8px;
-            background: linear-gradient(135deg, rgba(74,55,40,0.5), rgba(61,45,38,0.5));
-            border: 1px solid #8B6E55;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        
-        .qiaopi-card:hover {
-            background: linear-gradient(135deg, rgba(139,110,85,0.4), rgba(200,121,65,0.3));
-            border-color: #C87941;
-            transform: translateX(4px);
-        }
-        
-        .qiaopi-thumb {
-            width: 48px;
-            height: 48px;
-            border-radius: 4px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-        }
-        
-        .qiaopi-info {
-            flex: 1;
-        }
-        
-        .genealogy {
-            position: relative;
-            padding: 10px 0;
-        }
-        
-        .genealogy-root {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 4px;
-        }
-        
-        .genealogy-node {
-            padding: 4px 10px;
-            border: 2px solid;
-            border-radius: 4px;
-            font-size: 0.7rem;
-            font-weight: bold;
-            color: #F6E9D7;
-            text-align: center;
-            white-space: nowrap;
-        }
-        
-        .genealogy-sub {
-            font-size: 0.6rem;
-            color: #D4C2A8;
-            margin-top: 2px;
-        }
-        
-        .genealogy-line-v {
-            width: 2px;
-            height: 12px;
-            background: #8B6E55;
-        }
-        
-        .genealogy-line-h {
-            width: 20px;
-            height: 2px;
-            background: #8B6E55;
-        }
-        
-        .migration-map {
-            position: relative;
-            height: 140px;
-            background: linear-gradient(135deg, rgba(74,55,40,0.3), rgba(43,31,26,0.5));
-            border: 1px solid #8B6E55;
-            border-radius: 6px;
-            overflow: hidden;
-        }
-        
-        .migration-node {
-            position: absolute;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            transform: translate(-50%, -50%);
-            z-index: 2;
-        }
-        
-        .migration-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            border: 1px solid #F6E9D7;
-        }
-        
-        .migration-label {
-            font-size: 0.55rem;
-            color: #D4C2A8;
-            margin-top: 2px;
-            white-space: nowrap;
-        }
-        
-        .migration-lines {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 1;
-        }
-        
-        .qiaopi-modal-content {
-            background: linear-gradient(135deg, #3D2D26 0%, #2B1F1A 100%);
-            border: 2px solid #8B6E55;
-            border-radius: 12px;
-            max-width: 600px;
-            width: 90%;
-            max-height: 85vh;
-            overflow-y: auto;
-            padding: 24px;
-        }
-        
-        .qiaopi-detail-image {
-            width: 100%;
-            height: 300px;
-            background: linear-gradient(135deg, #4a3728, #3d2d26);
-            border: 2px solid #8B6E55;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 16px;
-        }
-        
-        .qiaopi-detail-text {
-            background: rgba(74,55,40,0.3);
-            border: 1px solid #8B6E55;
-            border-radius: 6px;
-            padding: 12px;
-            margin-top: 12px;
-        }
-        
-        .relation-network {
-            position: relative;
-            background: linear-gradient(135deg, rgba(74,55,40,0.2), rgba(43,31,26,0.4));
-            border: 1px solid #8B6E55;
-            border-radius: 6px;
-            overflow: hidden;
-        }
-        
-        .network-svg {
-            width: 100%;
-            height: 180px;
-        }
-        
-        .node-circle {
-            cursor: pointer;
-            transition: all 0.3s ease;
-            animation: nodeFloat 3s ease-in-out infinite;
-        }
-        
-        .node-circle:hover {
-            transform: scale(1.2);
-            filter: url(#glow);
-        }
-        
-        .network-line {
-            animation: linePulse 2s ease-in-out infinite;
-        }
-        
-        @keyframes nodeFloat {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-2px); }
-        }
-        
-        @keyframes linePulse {
-            0%, 100% { opacity: 0.6; }
-            50% { opacity: 1; }
-        }
-        
-        .network-legend {
-            display: flex;
-            justify-content: center;
-            gap: 12px;
-            padding: 8px;
-            background: rgba(43,31,26,0.5);
-            border-top: 1px solid #8B6E55;
-        }
-        
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            font-size: 0.65rem;
-            color: #D4C2A8;
-        }
-        
-        .legend-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-        }
-        
-        .emotion-container {
-            position: relative;
-        }
-        
-        .word-cloud {
-            position: relative;
-            height: 80px;
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            justify-content: center;
-            gap: 4px 8px;
-            padding: 8px;
-            background: linear-gradient(135deg, rgba(43,31,26,0.6), rgba(74,55,40,0.3));
-            border: 1px solid #8B6E55;
-            border-radius: 6px;
-        }
-        
-        .word {
-            cursor: default;
-            transition: all 0.3s ease;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
-        }
-        
-        .word:hover {
-            transform: scale(1.15);
-            text-shadow: 0 0 8px rgba(200,121,65,0.6);
-        }
-        
-        .w1 { font-size: 1.1rem; color: #F6E9D7; font-weight: bold; }
-        .w2 { font-size: 1rem; color: #C87941; font-weight: bold; }
-        .w3 { font-size: 0.9rem; color: #D4C2A8; }
-        .w4 { font-size: 0.85rem; color: #F6E9D7; }
-        .w5 { font-size: 0.95rem; color: #C87941; font-weight: bold; }
-        .w6 { font-size: 0.8rem; color: #D4C2A8; }
-        .w7 { font-size: 0.75rem; color: #F6E9D7; }
-        .w8 { font-size: 0.7rem; color: #C87941; }
-        .w9 { font-size: 0.65rem; color: #D4C2A8; }
-        .w10 { font-size: 0.6rem; color: #F6E9D7; }
-        
-        .network-modal-content {
-            background: linear-gradient(135deg, #3D2D26 0%, #2B1F1A 100%);
-            border: 2px solid #8B6E55;
-            border-radius: 12px;
-            max-width: 450px;
-            width: 90%;
-            max-height: 70vh;
-            overflow-y: auto;
-            padding: 20px;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="description" content="广州花都区洛场村碉楼群 · 华侨建筑遗产数字化保护 Web 3D 虚拟展示平台">
+<meta name="theme-color" content="#0A0908">
+<title>洛场村碉楼群 · 华侨建筑遗产数字化保护</title>
+
+<!-- 依赖本地托管（vendor/）：同域加载，无第三方域名握手，不受 CDN 波动影响。
+     defer 让浏览器并行下载且不阻塞 HTML 解析，并在 DOMContentLoaded 前按序执行。 -->
+<script defer src="vendor/three.min.js"></script>
+<script defer src="vendor/OrbitControls.js"></script>
+<!-- GLTFLoader 按需懒加载：仅当配置了真实 glb 模型时才请求 -->
+
+<style>
+/* ══════════════════════════════════════════════════════════════
+   设计令牌 —— 数字文博 · 沉浸式
+   炭黑为底，暖铜点睛，衬线标题，克制到只剩必要的线
+   ══════════════════════════════════════════════════════════════ */
+:root{
+  --bg:      #0A0908;
+  --bg-2:    #121110;
+  --bg-3:    #0D0C0B;
+  --surface:    rgba(255,248,235,.028);
+  --surface-hi: rgba(255,248,235,.062);
+  --line:      rgba(198,166,106,.17);
+  --line-soft: rgba(198,166,106,.085);
+  --brass:     #C6A66A;
+  --brass-lt:  #E4CB95;
+  --brass-dk:  #8A7248;
+  --txt:   #F0EBE1;
+  --txt-2: #A79E8F;
+  --txt-3: #6E6759;
+  --warn:  #D98A5A;
+  --serif: "Songti SC","STSong","Source Han Serif SC","Noto Serif CJK SC",Georgia,"Times New Roman",serif;
+  --sans:  -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  --ease: cubic-bezier(.22,.61,.36,1);
+  --drawer-w: 452px;
+}
+
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{
+  background:var(--bg);color:var(--txt);
+  font-family:var(--sans);font-size:14px;line-height:1.6;
+  overflow:hidden;-webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+button:focus-visible,a:focus-visible,[tabindex]:focus-visible{
+  outline:1px solid var(--brass);outline-offset:3px;border-radius:2px;
+}
+img{display:block;max-width:100%}
+::selection{background:rgba(198,166,106,.3)}
+[hidden]{display:none !important}
+
+/* ── 三维舞台 ────────────────────────────────────────────── */
+#stage{position:fixed;inset:0;z-index:1}
+#stage canvas{display:block;width:100%;height:100%}
+
+/* 暗角与上下渐隐：把视线收拢到画面中央，同时保证 UI 文字始终可读 */
+.vignette{
+  position:fixed;inset:0;z-index:2;pointer-events:none;
+  background:
+    radial-gradient(125% 92% at 50% 44%,transparent 40%,rgba(10,9,8,.74) 100%),
+    linear-gradient(to bottom,rgba(10,9,8,.9) 0%,transparent 15%,transparent 58%,rgba(10,9,8,.93) 100%);
+}
+
+#hotspotLayer{position:fixed;inset:0;z-index:5;pointer-events:none}
+
+/* ── 顶栏 ────────────────────────────────────────────────── */
+.topbar{
+  position:fixed;top:0;left:0;right:0;z-index:20;
+  display:flex;align-items:flex-start;justify-content:space-between;gap:16px;
+  padding:24px 30px;padding-top:max(24px,env(safe-area-inset-top));
+  pointer-events:none;
+}
+.topbar > *{pointer-events:auto}
+
+.brand{display:flex;align-items:center;gap:13px}
+.brand-mark{
+  width:36px;height:36px;flex:none;position:relative;
+  border:1px solid var(--brass);display:grid;place-items:center;
+}
+.brand-mark::before{content:"";width:11px;height:11px;background:var(--brass)}
+.brand-mark::after{content:"";position:absolute;inset:4px;border:1px solid var(--line-soft)}
+.brand h1{
+  font-family:var(--serif);font-size:19px;font-weight:600;
+  letter-spacing:.15em;line-height:1.25;color:var(--txt);
+}
+.brand p{
+  font-size:10px;letter-spacing:.24em;color:var(--brass);
+  margin-top:4px;opacity:.88;
+}
+
+.topbar-actions{display:flex;align-items:center;gap:9px}
+
+.pill{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:9px 17px;border:1px solid var(--line);border-radius:999px;
+  background:rgba(10,9,8,.5);backdrop-filter:blur(10px);
+  font-size:12px;letter-spacing:.11em;color:var(--txt-2);
+  transition:border-color .25s var(--ease),color .25s var(--ease),background .25s var(--ease);
+}
+.pill:hover{border-color:var(--brass);color:var(--brass-lt);background:rgba(198,166,106,.1)}
+.pill .dot-sq{width:5px;height:5px;background:var(--brass);flex:none}
+
+.icon-btn{
+  width:38px;height:38px;flex:none;border-radius:999px;
+  border:1px solid var(--line);background:rgba(10,9,8,.5);backdrop-filter:blur(10px);
+  display:grid;place-items:center;
+  font-family:var(--serif);font-size:15px;color:var(--txt-2);
+  transition:border-color .25s var(--ease),color .25s var(--ease);
+}
+.icon-btn:hover{border-color:var(--brass);color:var(--brass-lt)}
+
+/* ── 视角工具条 ──────────────────────────────────────────── */
+.hud-views{
+  position:fixed;left:30px;bottom:132px;z-index:20;
+  display:flex;flex-direction:column;gap:5px;
+}
+.view-chip{
+  padding:8px 15px;border:1px solid var(--line-soft);border-radius:2px;
+  background:rgba(10,9,8,.5);backdrop-filter:blur(10px);
+  font-size:11.5px;letter-spacing:.16em;color:var(--txt-3);
+  text-align:left;
+  transition:border-color .22s var(--ease),color .22s var(--ease),background .22s var(--ease);
+}
+.view-chip:hover{color:var(--txt);border-color:var(--line)}
+.view-chip.is-on{color:var(--brass-lt);border-color:var(--brass);background:rgba(198,166,106,.11)}
+
+/* ── 操作提示 ────────────────────────────────────────────── */
+.hint{
+  position:fixed;left:50%;bottom:136px;transform:translateX(-50%);
+  z-index:20;white-space:nowrap;
+  padding:8px 17px;border:1px solid var(--line-soft);border-radius:999px;
+  background:rgba(10,9,8,.62);backdrop-filter:blur(10px);
+  font-size:11px;letter-spacing:.18em;color:var(--txt-3);
+  transition:opacity .7s var(--ease);
+}
+.hint.is-off{opacity:0;pointer-events:none}
+
+/* ── 逐楼鉴赏切换器 ──────────────────────────────────────── */
+.showcase{
+  position:fixed;left:50%;bottom:46px;transform:translateX(-50%);
+  z-index:21;display:flex;align-items:center;gap:4px;
+  padding:9px 12px;border:1px solid var(--line);border-radius:2px;
+  background:rgba(10,9,8,.68);backdrop-filter:blur(12px);
+}
+.sc-arrow{
+  width:36px;height:58px;flex:none;
+  font-size:22px;line-height:1;color:var(--txt-3);
+  transition:color .22s var(--ease),background .22s var(--ease);
+}
+.sc-arrow:hover{color:var(--brass-lt);background:rgba(198,166,106,.08)}
+.sc-main{
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  min-width:230px;padding:4px 20px;text-align:center;
+}
+.sc-main:hover .sc-name{color:var(--brass-lt)}
+.sc-name{
+  font-family:var(--serif);font-size:19px;font-weight:600;
+  letter-spacing:.16em;color:var(--txt);white-space:nowrap;
+  transition:color .22s var(--ease);
+}
+.sc-sub{font-size:10.5px;letter-spacing:.18em;color:var(--brass);opacity:.86;white-space:nowrap}
+.sc-count{
+  align-self:flex-start;margin-left:6px;
+  font-size:10px;letter-spacing:.22em;color:var(--txt-3);white-space:nowrap;
+}
+
+/* ── 聚焦模式全局规则 ────────────────────────────────────── */
+body.mode-focus #hotspotLayer{display:none}
+body.mode-focus .timeline{display:none}
+.pill.is-on{
+  border-color:var(--brass);color:var(--brass-lt);
+  background:rgba(198,166,106,.11);
+}
+
+/* ── 底部年代轴 ──────────────────────────────────────────── */
+.timeline{
+  position:fixed;left:0;right:0;bottom:0;z-index:20;
+  padding:30px 30px max(28px,env(safe-area-inset-bottom));
+  background:linear-gradient(to top,rgba(10,9,8,.95) 18%,rgba(10,9,8,.66) 62%,transparent 100%);
+  pointer-events:none;
+}
+.tl-track{
+  position:relative;max-width:1020px;margin:0 auto;
+  display:flex;align-items:flex-end;justify-content:space-between;
+  pointer-events:auto;
+}
+.tl-line{
+  position:absolute;left:6%;right:6%;bottom:4px;height:1px;
+  background:linear-gradient(90deg,transparent,var(--line) 12%,var(--line) 88%,transparent);
+}
+.tl-node{
+  position:relative;z-index:1;flex:1;
+  display:flex;flex-direction:column;align-items:center;
+  padding:0;background:none;border:none;
+}
+.tl-meta{text-align:center;margin-bottom:15px;opacity:.5;transition:opacity .3s var(--ease)}
+.tl-era{
+  font-family:var(--serif);font-size:13px;font-weight:600;
+  letter-spacing:.13em;color:var(--txt-2);transition:color .3s var(--ease);
+}
+.tl-year{
+  font-size:10px;letter-spacing:.08em;color:var(--txt-3);
+  margin-top:3px;font-variant-numeric:tabular-nums;transition:color .3s var(--ease);
+}
+.tl-dot{
+  width:9px;height:9px;border-radius:50%;
+  border:1px solid var(--brass-dk);background:var(--bg);
+  transition:all .3s var(--ease);
+}
+.tl-node:hover .tl-meta{opacity:.85}
+.tl-node:hover .tl-dot{border-color:var(--brass);transform:scale(1.15)}
+.tl-node.is-on .tl-meta{opacity:1}
+.tl-node.is-on .tl-era{color:var(--brass-lt)}
+.tl-node.is-on .tl-year{color:var(--brass)}
+.tl-node.is-on .tl-dot{
+  background:var(--brass);border-color:var(--brass);transform:scale(1.3);
+  box-shadow:0 0 0 4px rgba(198,166,106,.15),0 0 16px rgba(198,166,106,.55);
+}
+
+/* ── 热点 ────────────────────────────────────────────────── */
+.hotspot{
+  position:absolute;transform:translate(-6px,-50%);
+  display:flex;align-items:center;gap:8px;
+  padding:0;pointer-events:auto;
+  transition:opacity .3s var(--ease);
+  will-change:left,top;
+}
+.hs-dot{
+  width:11px;height:11px;flex:none;border-radius:50%;position:relative;
+  border:1px solid var(--brass);background:rgba(198,166,106,.22);
+  transition:background .25s var(--ease);
+}
+.hs-dot::after{
+  content:"";position:absolute;left:50%;top:50%;
+  width:100%;height:100%;border-radius:50%;
+  border:1px solid var(--brass);
+  animation:hsPulse 2.8s var(--ease) infinite;
+}
+@keyframes hsPulse{
+  0%{transform:translate(-50%,-50%) scale(1);opacity:.65}
+  70%,100%{transform:translate(-50%,-50%) scale(2.7);opacity:0}
+}
+.hs-label{
+  font-size:10.5px;letter-spacing:.09em;white-space:nowrap;
+  padding:3px 9px;border-radius:2px;
+  border:1px solid var(--line-soft);background:rgba(10,9,8,.74);
+  color:var(--txt-2);backdrop-filter:blur(6px);
+  transition:all .25s var(--ease);
+}
+.hotspot:hover .hs-dot{background:var(--brass)}
+.hotspot:hover .hs-label{color:var(--brass-lt);border-color:var(--brass);background:rgba(10,9,8,.92)}
+
+/* ── 遮罩（仅窄屏抽屉启用） ──────────────────────────────── */
+.scrim{display:none}
+
+/* ── 右侧抽屉 ────────────────────────────────────────────── */
+.drawer{
+  position:fixed;top:0;right:0;bottom:0;z-index:60;
+  width:var(--drawer-w);max-width:100%;
+  display:flex;flex-direction:column;
+  background:linear-gradient(180deg,rgba(18,17,16,.975),rgba(10,9,8,.985));
+  border-left:1px solid var(--line);
+  backdrop-filter:blur(22px) saturate(1.35);
+  transform:translateX(calc(100% + 2px));
+  transition:transform .44s var(--ease);
+}
+.drawer.is-open{transform:none}
+
+.drawer-head{
+  display:flex;align-items:center;gap:13px;flex:none;
+  padding:22px 22px 17px;padding-top:max(22px,env(safe-area-inset-top));
+  border-bottom:1px solid var(--line-soft);
+}
+.drawer-title{flex:1;min-width:0}
+.drawer-title h2{
+  font-family:var(--serif);font-size:16px;font-weight:600;
+  letter-spacing:.13em;color:var(--txt);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.drawer-title p{
+  font-size:10px;letter-spacing:.15em;color:var(--brass);
+  margin-top:4px;opacity:.82;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.round-btn{
+  width:33px;height:33px;flex:none;border-radius:999px;
+  border:1px solid var(--line-soft);display:grid;place-items:center;
+  color:var(--txt-2);font-size:16px;line-height:1;
+  transition:all .22s var(--ease);
+}
+.round-btn:hover{border-color:var(--brass);color:var(--brass-lt)}
+
+.drawer-tabs{
+  display:flex;gap:2px;flex:none;padding:0 16px;
+  border-bottom:1px solid var(--line-soft);
+  overflow-x:auto;scrollbar-width:none;
+}
+.drawer-tabs::-webkit-scrollbar{display:none}
+.tab{
+  position:relative;padding:13px 12px;
+  font-size:12px;letter-spacing:.1em;color:var(--txt-3);white-space:nowrap;
+  transition:color .22s var(--ease);
+}
+.tab::after{
+  content:"";position:absolute;left:10px;right:10px;bottom:-1px;height:1px;
+  background:var(--brass);transform:scaleX(0);transition:transform .32s var(--ease);
+}
+.tab:hover{color:var(--txt-2)}
+.tab.is-on{color:var(--brass-lt)}
+.tab.is-on::after{transform:scaleX(1)}
+
+.drawer-body{
+  flex:1;overflow-y:auto;overscroll-behavior:contain;
+  padding:22px;
+  scrollbar-width:thin;scrollbar-color:var(--line) transparent;
+}
+.drawer-body::-webkit-scrollbar{width:6px}
+.drawer-body::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
+
+.view{display:none}
+.view.is-on{display:block;animation:viewIn .38s var(--ease) both}
+@keyframes viewIn{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}
+
+/* ── 卡片与版式 ──────────────────────────────────────────── */
+.card{
+  border:1px solid var(--line-soft);background:var(--surface);
+  border-radius:3px;padding:17px;margin-bottom:14px;
+}
+.card:last-child{margin-bottom:0}
+.card-head{
+  display:flex;align-items:baseline;justify-content:space-between;
+  gap:10px;margin-bottom:15px;
+}
+.card-title{
+  font-family:var(--serif);font-size:13.5px;font-weight:600;
+  letter-spacing:.14em;color:var(--txt);
+}
+.card-title::before{
+  content:"";display:inline-block;width:3px;height:3px;
+  background:var(--brass);margin-right:9px;vertical-align:middle;
+  transform:translateY(-1px);
+}
+.card-note{font-size:10px;letter-spacing:.1em;color:var(--txt-3);white-space:nowrap}
+
+.chart{width:100%;display:block;height:auto}
+.chart-axis{font-size:9px;fill:var(--txt-2)}
+.chart-val{font-size:9px;fill:var(--brass-lt);font-family:var(--serif)}
+.chart-label{font-size:9px;fill:var(--txt-3)}
+.chart-legend{font-size:10px;fill:var(--txt-2)}
+.chart-center{font-family:var(--serif);font-size:11px;fill:var(--txt);font-weight:600}
+.chart-center-sub{font-size:8.5px;fill:var(--txt-3)}
+
+/* 保护状态：文字 + 计量条 */
+.stat{padding:11px 0}
+.stat + .stat{border-top:1px solid var(--line-soft)}
+.stat-row{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.stat-k{font-size:12.5px;color:var(--txt-2)}
+.stat-v{
+  font-family:var(--serif);font-size:12.5px;letter-spacing:.07em;
+  color:var(--brass-lt);white-space:nowrap;
+}
+.stat-v.is-warn{color:var(--warn)}
+.meter{height:3px;border-radius:2px;background:rgba(255,248,235,.07);overflow:hidden;margin-top:9px}
+.meter i{display:block;height:100%;border-radius:2px;background:linear-gradient(90deg,var(--brass-dk),var(--brass));width:0;transition:width .9s var(--ease)}
+.meter.is-warn i{background:linear-gradient(90deg,#7C4A32,var(--warn))}
+
+/* 关系网络 */
+.network-wrap{
+  border:1px solid var(--line-soft);border-radius:3px;overflow:hidden;
+  background:radial-gradient(120% 100% at 50% 50%,rgba(198,166,106,.05),transparent 70%);
+}
+.network-svg{width:100%;height:auto;display:block}
+.node-hit{cursor:pointer}
+.node-hit circle{transition:fill .25s var(--ease),stroke-width .25s var(--ease)}
+.node-hit:hover circle{stroke-width:2.5}
+.node-hit:hover text{fill:#fff}
+.network-legend{
+  display:flex;flex-wrap:wrap;justify-content:center;gap:16px;
+  padding:11px 10px;border-top:1px solid var(--line-soft);
+}
+.legend-item{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--txt-3);letter-spacing:.06em}
+.legend-dot{width:7px;height:7px;border-radius:50%;flex:none}
+
+/* ── 词云：侨乡文化标签 / 侨批高频词 ──────────────────────
+   字号映射词频，铜色按权重分级；悬停时其余词淡出以聚焦视线 */
+.cloud{
+  position:relative;margin:0 -2px;
+  border-radius:3px;
+  background:radial-gradient(78% 62% at 50% 46%,rgba(198,166,106,.055),transparent 72%);
+}
+.cloud svg{display:block;width:100%;height:auto;overflow:visible}
+/* 迷你词云（侨批卡片内）：图例收紧，控制卡片高度 */
+.cloud-mini + .cloud-legend{margin-top:11px;padding-top:9px}
+.cw-word{
+  animation:cwIn .6s var(--ease) backwards;
+  transition:opacity .28s var(--ease);
+}
+@keyframes cwIn{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}
+.cw-word text{
+  font-family:var(--serif);letter-spacing:.06em;
+  transform-box:fill-box;transform-origin:center;
+  transition:fill .26s var(--ease),transform .38s var(--ease);
+}
+.cw-word:hover text{transform:scale(1.16)}
+.cloud.is-hot .cw-word:not(.is-hot){opacity:.16}
+.cloud-legend{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  margin-top:13px;padding-top:11px;border-top:1px solid var(--line-soft);
+  font-size:9.5px;letter-spacing:.09em;color:var(--txt-3);
+}
+.cloud-legend b{font-weight:400;color:var(--brass-lt);letter-spacing:.06em}
+.cloud-scale{display:flex;align-items:center;gap:6px;flex:none}
+.cloud-scale i{display:block;flex:none;border-radius:50%;background:var(--brass)}
+
+/* 侨批卡片 */
+.qp-card{
+  display:flex;align-items:center;gap:13px;width:100%;text-align:left;
+  padding:13px;margin-bottom:10px;
+  border:1px solid var(--line-soft);border-radius:3px;background:var(--surface);
+  transition:all .26s var(--ease);
+}
+.qp-card:last-child{margin-bottom:0}
+.qp-card:hover{border-color:var(--brass);background:rgba(198,166,106,.07);transform:translateX(3px)}
+.qp-seal{
+  width:46px;height:46px;flex:none;border-radius:2px;
+  display:grid;place-items:center;
+  border:1px solid var(--line);
+  background:linear-gradient(135deg,rgba(198,166,106,.15),rgba(198,166,106,.02));
+  color:var(--brass);font-family:var(--serif);font-size:17px;
+}
+.qp-meta{flex:1;min-width:0}
+.qp-meta b{display:block;font-size:13px;font-weight:600;letter-spacing:.05em;color:var(--txt)}
+.qp-meta span{display:block;font-size:10.5px;letter-spacing:.05em;color:var(--txt-3);margin-top:4px}
+.qp-arrow{color:var(--txt-3);font-size:14px;flex:none;transition:color .25s var(--ease),transform .25s var(--ease)}
+.qp-card:hover .qp-arrow{color:var(--brass);transform:translateX(2px)}
+
+/* ── 详情视图 ────────────────────────────────────────────── */
+.detail-cover{
+  position:relative;border:1px solid var(--line-soft);border-radius:3px;
+  background:var(--bg-3);overflow:hidden;
+  display:grid;place-items:center;min-height:170px;margin-bottom:9px;
+}
+.detail-cover img{width:100%;max-height:312px;object-fit:contain;display:block}
+.detail-cover .ph{
+  padding:46px 20px;text-align:center;
+  font-size:12px;letter-spacing:.12em;color:var(--txt-3);
+}
+.detail-nav{
+  position:absolute;top:50%;transform:translateY(-50%);
+  width:32px;height:32px;border-radius:999px;z-index:2;
+  display:grid;place-items:center;font-size:17px;line-height:1;
+  background:rgba(10,9,8,.66);border:1px solid var(--line-soft);color:var(--txt-2);
+  transition:all .22s var(--ease);
+}
+.detail-nav:hover{background:rgba(10,9,8,.9);border-color:var(--brass);color:var(--brass-lt)}
+.detail-nav.prev{left:9px}
+.detail-nav.next{right:9px}
+.thumbs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px}
+.thumbs button{
+  width:54px;height:41px;padding:0;overflow:hidden;
+  border:1px solid var(--line-soft);border-radius:2px;background:var(--bg-3);
+  transition:border-color .22s var(--ease);opacity:.6;
+}
+.thumbs button:hover{opacity:1}
+.thumbs button.is-on{border-color:var(--brass);opacity:1}
+.thumbs img{width:100%;height:100%;object-fit:cover}
+
+.sec{margin-top:20px}
+.sec h4{
+  font-family:var(--serif);font-size:12.5px;font-weight:600;
+  letter-spacing:.14em;color:var(--brass);margin-bottom:9px;
+}
+.sec h4::before{
+  content:"";display:inline-block;width:12px;height:1px;
+  background:var(--brass-dk);margin-right:9px;vertical-align:middle;
+  transform:translateY(-3px);
+}
+.sec p{font-size:12.5px;line-height:1.9;letter-spacing:.02em;color:var(--txt-2)}
+
+/* 侨批信笺 */
+.letter{
+  border:1px solid var(--line-soft);border-left:2px solid var(--brass-dk);
+  border-radius:2px;padding:17px 19px;
+  background:linear-gradient(135deg,rgba(198,166,106,.062),rgba(198,166,106,.014));
+  font-family:var(--serif);font-size:13px;line-height:2.05;
+  letter-spacing:.05em;color:#DCD3C2;
+}
+.qp-stamp{
+  display:inline-grid;place-items:center;width:34px;height:34px;
+  border:1px solid var(--brass);border-radius:2px;
+  color:var(--brass);font-family:var(--serif);font-size:13px;
+  background:rgba(198,166,106,.09);margin-bottom:13px;
+}
+.emoji-plate{
+  display:grid;place-items:center;padding:44px 0;font-size:44px;
+  background:radial-gradient(80% 90% at 50% 50%,rgba(198,166,106,.08),transparent 72%);
+}
+
+/* ── 关于弹窗 ────────────────────────────────────────────── */
+.modal{
+  position:fixed;inset:0;z-index:80;display:none;
+  padding:24px;overflow-y:auto;
+  background:rgba(6,5,5,.84);backdrop-filter:blur(8px);
+}
+.modal.is-on{display:grid;place-items:center;animation:viewIn .3s var(--ease) both}
+.modal-box{
+  width:100%;max-width:640px;max-height:88vh;overflow-y:auto;
+  padding:32px;border:1px solid var(--line);border-radius:4px;
+  background:linear-gradient(180deg,#141312,#0C0B0A);
+}
+.modal-box h2{
+  font-family:var(--serif);font-size:19px;font-weight:600;
+  letter-spacing:.14em;margin-bottom:6px;
+}
+.modal-box .sub{font-size:10.5px;letter-spacing:.18em;color:var(--brass);margin-bottom:22px}
+.modal-box p{font-size:13px;line-height:1.95;color:var(--txt-2);margin-bottom:14px}
+.modal-close-row{display:flex;justify-content:flex-end;margin-top:22px}
+
+/* ── 首屏 ────────────────────────────────────────────────── */
+.boot{
+  position:fixed;inset:0;z-index:200;
+  display:grid;place-items:center;background:var(--bg);
+  transition:opacity .7s var(--ease);
+}
+.boot.is-off{opacity:0;pointer-events:none}
+.boot-inner{text-align:center}
+.boot-mark{
+  width:46px;height:46px;margin:0 auto 24px;position:relative;
+  border:1px solid var(--brass);
+}
+.boot-mark::before{
+  content:"";position:absolute;left:50%;top:50%;width:15px;height:15px;
+  background:var(--brass);
+  animation:bootPulse 2s var(--ease) infinite;
+}
+@keyframes bootPulse{
+  0%,100%{transform:translate(-50%,-50%) rotate(45deg) scale(.62);opacity:.45}
+  50%{transform:translate(-50%,-50%) rotate(45deg) scale(1);opacity:1}
+}
+.boot-t{font-family:var(--serif);font-size:14px;letter-spacing:.34em;color:var(--txt-2)}
+.boot-s{font-size:10px;letter-spacing:.26em;color:var(--txt-3);margin-top:12px}
+
+.noscript{
+  position:fixed;inset:0;z-index:300;display:grid;place-items:center;
+  padding:28px;background:var(--bg);text-align:center;
+  font-size:13px;line-height:1.9;color:var(--txt-2);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   响应式
+   ══════════════════════════════════════════════════════════════ */
+@media (max-width:1180px){
+  :root{--drawer-w:400px}
+}
+
+@media (max-width:900px){
+  :root{--drawer-w:100%}
+  .scrim{
+    display:block;position:fixed;inset:0;z-index:55;
+    background:rgba(6,5,5,.66);
+    opacity:0;pointer-events:none;
+    transition:opacity .38s var(--ease);
+  }
+  .scrim.is-on{opacity:1;pointer-events:auto}
+  .drawer{border-left:none;width:100%}
+  .hud-views{
+    left:16px;bottom:auto;top:82px;
+    flex-direction:row;gap:5px;
+  }
+  .view-chip{padding:8px 13px;font-size:11px;letter-spacing:.1em}
+  .hint{bottom:120px}
+}
+
+@media (max-width:640px){
+  .topbar{padding:17px 17px;padding-top:max(17px,env(safe-area-inset-top))}
+  .brand{gap:10px}
+  .brand-mark{width:30px;height:30px}
+  .brand-mark::before{width:9px;height:9px}
+  .brand h1{font-size:15.5px;letter-spacing:.1em}
+  .brand p{font-size:9px;letter-spacing:.13em;margin-top:3px}
+  .pill{padding:8px 13px;font-size:11px;letter-spacing:.06em}
+  .icon-btn{width:34px;height:34px;font-size:14px}
+  .timeline{padding:22px 12px max(20px,env(safe-area-inset-bottom))}
+  .tl-era{font-size:10.5px;letter-spacing:.06em}
+  .tl-year{font-size:9px;letter-spacing:.02em}
+  .tl-meta{margin-bottom:12px}
+  .hud-views{top:74px;left:12px}
+  .view-chip{padding:7px 11px;font-size:10.5px}
+  .hint{display:none}
+  .showcase{bottom:38px;padding:7px 8px;max-width:calc(100vw - 24px)}
+  .sc-main{min-width:0;padding:4px 10px}
+  .sc-name{font-size:16px;letter-spacing:.1em}
+  .sc-sub{font-size:9.5px;letter-spacing:.08em}
+  .sc-count{display:none}
+  .drawer-body{padding:18px}
+  .drawer-head{padding:18px 18px 15px;padding-top:max(18px,env(safe-area-inset-top))}
+  .modal{padding:14px}
+  .modal-box{padding:24px 20px}
+  .card{padding:15px}
+}
+
+@media (max-height:560px){
+  .hud-views{bottom:auto;top:76px;flex-direction:row}
+  .hint{display:none}
+}
+
+/* ══════════════════════════════════════════════════════════════
+   无障碍：尊重系统「减少动态效果」
+   ══════════════════════════════════════════════════════════════ */
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{
+    animation-duration:.001ms !important;
+    animation-iteration-count:1 !important;
+    transition-duration:.001ms !important;
+  }
+  .hs-dot::after{display:none}
+}
+</style>
 </head>
 <body>
-    <div id="canvas-container"></div>
 
-    <div class="fixed top-0 left-0 right-0 h-14 flex items-center justify-between px-6 z-50"
-         style="background: linear-gradient(180deg, rgba(43,31,26,0.98), rgba(43,31,26,0.85)); border-bottom: 2px solid #8B6E55;">
-        <div>
-            <h1 class="text-xl font-bold" style="color: #F6E9D7;">洛场村碉楼群</h1>
-            <p class="text-xs" style="color: #D4C2A8;">华侨建筑遗产数字化保护</p>
-        </div>
-        <div class="flex gap-2">
-            <button class="view-btn active" data-view="overhead">俯瞰视角</button>
-            <button class="view-btn" data-view="front">正面视角</button>
-            <button class="view-btn" data-view="detail">局部细节</button>
-        </div>
+<!-- 三维舞台 -->
+<div id="stage"></div>
+<div class="vignette"></div>
+<div id="hotspotLayer"></div>
+
+<!-- 顶栏 -->
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-mark" aria-hidden="true"></div>
+    <div>
+      <h1>洛场村碉楼群</h1>
+      <p>华侨建筑遗产 · 数字化保护与展示</p>
     </div>
+  </div>
+  <nav class="topbar-actions" aria-label="主导航">
+    <button class="pill" id="btnFocus" aria-pressed="false">
+      <span class="dot-sq" aria-hidden="true"></span><span id="btnFocusLabel">逐楼鉴赏</span>
+    </button>
+    <button class="pill" id="btnData" aria-haspopup="dialog">
+      <span class="dot-sq" aria-hidden="true"></span>数据档案
+    </button>
+    <button class="icon-btn" id="btnAbout" aria-label="关于本项目" aria-haspopup="dialog">i</button>
+  </nav>
+</header>
 
-    <div class="fixed left-4 top-20 bottom-28 w-72 z-40 overflow-y-auto space-y-4 p-2">
-        <div class="panel p-4">
-            <div class="panel-title">📊 碉楼年代分布</div>
-            <div id="eraChart" class="w-full h-40"></div>
-        </div>
-        
-        <div class="panel p-4">
-            <div class="panel-title">🧱 建筑材料占比</div>
-            <div id="materialChart" class="w-full h-40"></div>
-        </div>
-        
-        <div class="panel p-4">
-            <div class="panel-title">🏠 保护状态监测</div>
-            <div class="space-y-3 text-xs" style="color:#D4C2A8">
-                <div class="flex justify-between"><span>整体结构安全</span><span class="data-value">良好</span></div>
-                <div class="flex justify-between"><span>外墙保存状态</span><span class="data-value">一般</span></div>
-                <div class="flex justify-between"><span>内部完整度</span><span class="data-value">较好</span></div>
-                <div class="flex justify-between"><span>周边环境保护</span><span class="data-value" style="color:#C87941">需改善</span></div>
-            </div>
-        </div>
+<!-- 视角工具条 -->
+<div class="hud-views" role="group" aria-label="视角切换">
+  <button class="view-chip is-on" data-view="overhead">俯瞰</button>
+  <button class="view-chip" data-view="front">正视</button>
+  <button class="view-chip" data-view="detail">细节</button>
+</div>
+
+<div class="hint" id="hint">拖动旋转 · 滚轮缩放 · 点击光点查看碉楼</div>
+
+<!-- 逐楼鉴赏切换器（聚焦模式专用） -->
+<div class="showcase" id="showcase" hidden>
+  <button class="sc-arrow" id="scPrev" type="button" aria-label="上一座碉楼">‹</button>
+  <button class="sc-main" id="scMain" type="button" aria-label="查看当前碉楼档案">
+    <span class="sc-name" id="scName"></span>
+    <span class="sc-sub" id="scSub"></span>
+  </button>
+  <button class="sc-arrow" id="scNext" type="button" aria-label="下一座碉楼">›</button>
+  <span class="sc-count" id="scCount" aria-hidden="true"></span>
+</div>
+
+<!-- 底部年代轴 -->
+<footer class="timeline">
+  <div class="tl-track" role="group" aria-label="历史年代轴">
+    <div class="tl-line" aria-hidden="true"></div>
+    <button class="tl-node is-on" data-era="qing">
+      <span class="tl-meta"><span class="tl-era">清末建造</span><span class="tl-year">1840—1911</span></span>
+      <span class="tl-dot"></span>
+    </button>
+    <button class="tl-node" data-era="republic">
+      <span class="tl-meta"><span class="tl-era">民国鼎盛</span><span class="tl-year">1912—1949</span></span>
+      <span class="tl-dot"></span>
+    </button>
+    <button class="tl-node" data-era="war">
+      <span class="tl-meta"><span class="tl-era">抗战时期</span><span class="tl-year">1937—1945</span></span>
+      <span class="tl-dot"></span>
+    </button>
+    <button class="tl-node" data-era="modern">
+      <span class="tl-meta"><span class="tl-era">近代闲置</span><span class="tl-year">1949—2000</span></span>
+      <span class="tl-dot"></span>
+    </button>
+    <button class="tl-node" data-era="digital">
+      <span class="tl-meta"><span class="tl-era">数字化保护</span><span class="tl-year">2025—</span></span>
+      <span class="tl-dot"></span>
+    </button>
+  </div>
+</footer>
+
+<!-- 遮罩 -->
+<div class="scrim" id="scrim"></div>
+
+<!-- 右侧抽屉：数据档案 ⇄ 详情 -->
+<aside class="drawer" id="drawer" role="dialog" aria-modal="false" aria-label="洛场村碉楼群数据档案">
+  <div class="drawer-head">
+    <button class="round-btn" id="drawerBack" aria-label="返回数据档案" hidden>←</button>
+    <div class="drawer-title">
+      <h2 id="drawerTitle">数据档案</h2>
+      <p id="drawerSub">洛场村碉楼群 · 数字化档案</p>
     </div>
+    <button class="round-btn" id="drawerClose" aria-label="关闭面板">✕</button>
+  </div>
 
-    <div class="fixed right-4 top-20 bottom-28 w-72 z-40 overflow-y-auto space-y-4 p-2">
-        <div class="panel p-4">
-            <div class="panel-title">🔗 「人 - 楼 - 物」关系网络</div>
-            <div class="relation-network" id="relationNetwork">
-                <svg class="network-svg" viewBox="0 0 280 200">
-                    <defs>
-                        <filter id="glow"><feGaussianBlur stdDeviation="2" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-                    </defs>
-                    <g class="network-center">
-                        <circle cx="140" cy="100" r="22" fill="#C87941" stroke="#F6E9D7" stroke-width="2" filter="url(#glow)"/>
-                        <text x="140" y="104" text-anchor="middle" fill="#F6E9D7" font-size="10" font-weight="bold">碉楼群</text>
-                    </g>
-                    <g class="person-nodes">
-                        <circle cx="60" cy="50" r="16" fill="#8B6E55" stroke="#D4C2A8" stroke-width="1.5" class="node-circle" data-type="person" data-id="0"/>
-                        <text x="60" y="54" text-anchor="middle" fill="#F6E9D7" font-size="8">江活钦</text>
-                        <line x1="75" y1="62" x2="120" y2="90" stroke="#C87941" stroke-width="1" class="network-line"/>
-                        
-                        <circle cx="60" cy="150" r="16" fill="#8B6E55" stroke="#D4C2A8" stroke-width="1.5" class="node-circle" data-type="person" data-id="1"/>
-                        <text x="60" y="154" text-anchor="middle" fill="#F6E9D7" font-size="8">江梓桥</text>
-                        <line x1="75" y1="142" x2="120" y2="110" stroke="#C87941" stroke-width="1" class="network-line"/>
-                        
-                        <circle cx="220" cy="50" r="16" fill="#8B6E55" stroke="#D4C2A8" stroke-width="1.5" class="node-circle" data-type="person" data-id="2"/>
-                        <text x="220" y="54" text-anchor="middle" fill="#F6E9D7" font-size="8">江彰柏</text>
-                        <line x1="205" y1="62" x2="160" y2="90" stroke="#C87941" stroke-width="1" class="network-line"/>
-                        
-                        <circle cx="220" cy="150" r="16" fill="#8B6E55" stroke="#D4C2A8" stroke-width="1.5" class="node-circle" data-type="person" data-id="3"/>
-                        <text x="220" y="154" text-anchor="middle" fill="#F6E9D7" font-size="8">江瑞莲</text>
-                        <line x1="205" y1="142" x2="160" y2="110" stroke="#C87941" stroke-width="1" class="network-line"/>
-                    </g>
-                    <g class="object-nodes">
-                        <circle cx="30" cy="100" r="12" fill="#4a3728" stroke="#C87941" stroke-width="1" class="node-circle" data-type="object" data-id="0"/>
-                        <text x="30" y="103" text-anchor="middle" fill="#D4C2A8" font-size="6">侨批</text>
-                        <line x1="42" y1="100" x2="118" y2="100" stroke="#C87941" stroke-width="0.8" stroke-dasharray="3,2" class="network-line"/>
-                        
-                        <circle cx="250" cy="100" r="12" fill="#4a3728" stroke="#C87941" stroke-width="1" class="node-circle" data-type="object" data-id="1"/>
-                        <text x="250" y="103" text-anchor="middle" fill="#D4C2A8" font-size="6">家书</text>
-                        <line x1="238" y1="100" x2="162" y2="100" stroke="#C87941" stroke-width="0.8" stroke-dasharray="3,2" class="network-line"/>
-                        
-                        <circle cx="140" cy="20" r="12" fill="#4a3728" stroke="#C87941" stroke-width="1" class="node-circle" data-type="object" data-id="2"/>
-                        <text x="140" y="23" text-anchor="middle" fill="#D4C2A8" font-size="6">旧照片</text>
-                        <line x1="140" y1="32" x2="140" y2="78" stroke="#C87941" stroke-width="0.8" stroke-dasharray="3,2" class="network-line"/>
-                    </g>
-                    <g class="place-nodes">
-                        <circle cx="100" cy="180" r="12" fill="#3d2d26" stroke="#D4C2A8" stroke-width="1" class="node-circle" data-type="place" data-id="0"/>
-                        <text x="100" y="183" text-anchor="middle" fill="#D4C2A8" font-size="6">旧金山</text>
-                        <line x1="108" y1="170" x2="128" y2="118" stroke="#C87941" stroke-width="0.6" stroke-dasharray="2,2" class="network-line"/>
-                        
-                        <circle cx="180" cy="180" r="12" fill="#3d2d26" stroke="#D4C2A8" stroke-width="1" class="node-circle" data-type="place" data-id="1"/>
-                        <text x="180" y="183" text-anchor="middle" fill="#D4C2A8" font-size="6">加拿大</text>
-                        <line x1="172" y1="170" x2="152" y2="118" stroke="#C87941" stroke-width="0.6" stroke-dasharray="2,2" class="network-line"/>
-                    </g>
-                </svg>
-                <div class="network-legend">
-                    <span class="legend-item"><span class="legend-dot" style="background:#C87941;"></span>碉楼</span>
-                    <span class="legend-item"><span class="legend-dot" style="background:#8B6E55;"></span>人物</span>
-                    <span class="legend-item"><span class="legend-dot" style="background:#4a3728;"></span>物件</span>
-                    <span class="legend-item"><span class="legend-dot" style="background:#3d2d26;"></span>地名</span>
-                </div>
-            </div>
+  <div class="drawer-tabs" id="drawerTabs" role="tablist">
+    <button class="tab is-on" data-tab="overview" role="tab">概览</button>
+    <button class="tab" data-tab="network" role="tab">关系网络</button>
+    <button class="tab" data-tab="qiaopi" role="tab">侨批档案</button>
+    <button class="tab" data-tab="tags" role="tab">文化标签</button>
+  </div>
+
+  <div class="drawer-body" id="drawerBody">
+
+    <!-- ══ 概览 ══ -->
+    <section class="view is-on" data-view="overview">
+
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">碉楼年代分布</div>
+          <div class="card-note">共 36 座</div>
         </div>
-        
-        <div class="panel p-4">
-            <div class="panel-title">💌 侨批情感可视化</div>
-            <div class="emotion-container">
-                <div class="word-cloud" id="wordCloud">
-                    <span class="word w1">平安</span>
-                    <span class="word w2">家</span>
-                    <span class="word w3">寄钱</span>
-                    <span class="word w4">回乡</span>
-                    <span class="word w5">碉楼</span>
-                    <span class="word w6">挂念</span>
-                    <span class="word w7">美国</span>
-                    <span class="word w8">汇款</span>
-                    <span class="word w9">思念</span>
-                    <span class="word w10">亲人</span>
-                </div>
-                <div id="emotionCurve" class="w-full h-24 mt-2"></div>
-            </div>
+        <svg class="chart" viewBox="0 0 300 172" role="img"
+             aria-label="碉楼年代分布柱状图：清末 4 座，民国初 8 座，民国鼎盛 15 座，抗战前 6 座，现代修复 3 座">
+          <defs>
+            <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%"   stop-color="#E4CB95"/>
+              <stop offset="100%" stop-color="#8A7248"/>
+            </linearGradient>
+          </defs>
+          <line x1="28" y1="130" x2="292" y2="130" stroke="rgba(198,166,106,.17)" stroke-width="1"/>
+          <line x1="28" y1="93.3" x2="292" y2="93.3" stroke="rgba(198,166,106,.08)" stroke-width="1" stroke-dasharray="2,4"/>
+          <line x1="28" y1="56.7" x2="292" y2="56.7" stroke="rgba(198,166,106,.08)" stroke-width="1" stroke-dasharray="2,4"/>
+          <line x1="28" y1="20"   x2="292" y2="20"   stroke="rgba(198,166,106,.08)" stroke-width="1" stroke-dasharray="2,4"/>
+          <text class="chart-label" x="23" y="133" text-anchor="end">0</text>
+          <text class="chart-label" x="23" y="96.3" text-anchor="end">5</text>
+          <text class="chart-label" x="23" y="59.7" text-anchor="end">10</text>
+          <text class="chart-label" x="23" y="23"  text-anchor="end">15</text>
+
+          <rect x="39"  y="100.7" width="30" height="29.3"  rx="1.5" fill="url(#barGrad)"><title>清末：4 座</title></rect>
+          <rect x="91"  y="71.3"  width="30" height="58.7"  rx="1.5" fill="url(#barGrad)"><title>民国初：8 座</title></rect>
+          <rect x="143" y="20"    width="30" height="110"   rx="1.5" fill="url(#barGrad)"><title>民国鼎盛：15 座</title></rect>
+          <rect x="195" y="86"    width="30" height="44"    rx="1.5" fill="url(#barGrad)"><title>抗战前：6 座</title></rect>
+          <rect x="247" y="108"   width="30" height="22"    rx="1.5" fill="url(#barGrad)"><title>现代修复：3 座</title></rect>
+
+          <text class="chart-val" x="54"  y="96.7" text-anchor="middle">4</text>
+          <text class="chart-val" x="106" y="67.3" text-anchor="middle">8</text>
+          <text class="chart-val" x="158" y="16"   text-anchor="middle">15</text>
+          <text class="chart-val" x="210" y="82"   text-anchor="middle">6</text>
+          <text class="chart-val" x="262" y="104"  text-anchor="middle">3</text>
+
+          <text class="chart-label" x="54"  y="146" text-anchor="middle">清末</text>
+          <text class="chart-label" x="106" y="146" text-anchor="middle">民国初</text>
+          <text class="chart-label" x="158" y="146" text-anchor="middle">民国鼎盛</text>
+          <text class="chart-label" x="210" y="146" text-anchor="middle">抗战前</text>
+          <text class="chart-label" x="262" y="146" text-anchor="middle">现代修复</text>
+        </svg>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">建筑材料占比</div>
+          <div class="card-note">5 类</div>
         </div>
-        
-        <div class="panel p-4">
-            <div class="panel-title">🏷️ 侨乡文化标签</div>
-            <div class="tag-cloud flex flex-wrap gap-2 justify-center">
-                <span>华侨文化</span><span>中西合璧</span><span>防御建筑</span><span>近代建筑</span><span>侨乡风情</span>
-                <span>建筑遗产</span><span>乡土建筑</span><span>移民历史</span><span>文化交融</span><span>碉楼集群</span>
-            </div>
+        <svg class="chart" viewBox="0 0 300 176" role="img"
+             aria-label="建筑材料占比环形图：青砖 45%，红砖 25%，混凝土 18%，石材 7%，木材 5%">
+          <g transform="rotate(-90 76 88)">
+            <circle cx="76" cy="88" r="44" fill="none" stroke="#C6A66A" stroke-width="22"
+                    stroke-dasharray="124.41 152.05" stroke-dashoffset="0"><title>青砖：45%</title></circle>
+            <circle cx="76" cy="88" r="44" fill="none" stroke="#A98A52" stroke-width="22"
+                    stroke-dasharray="69.12 207.35"  stroke-dashoffset="-124.41"><title>红砖：25%</title></circle>
+            <circle cx="76" cy="88" r="44" fill="none" stroke="#8A7248" stroke-width="22"
+                    stroke-dasharray="49.76 226.70"  stroke-dashoffset="-193.53"><title>混凝土：18%</title></circle>
+            <circle cx="76" cy="88" r="44" fill="none" stroke="#63533A" stroke-width="22"
+                    stroke-dasharray="19.35 257.11"  stroke-dashoffset="-243.29"><title>石材：7%</title></circle>
+            <circle cx="76" cy="88" r="44" fill="none" stroke="#3E362A" stroke-width="22"
+                    stroke-dasharray="13.82 262.64"  stroke-dashoffset="-262.64"><title>木材：5%</title></circle>
+          </g>
+          <text class="chart-center" x="76" y="86" text-anchor="middle">材料</text>
+          <text class="chart-center-sub" x="76" y="101" text-anchor="middle">5 类构成</text>
+
+          <g>
+            <rect x="160" y="30" width="9" height="9" rx="1.5" fill="#C6A66A"/>
+            <text class="chart-legend" x="177" y="38.5">青砖 45%</text>
+            <rect x="160" y="54" width="9" height="9" rx="1.5" fill="#A98A52"/>
+            <text class="chart-legend" x="177" y="62.5">红砖 25%</text>
+            <rect x="160" y="78" width="9" height="9" rx="1.5" fill="#8A7248"/>
+            <text class="chart-legend" x="177" y="86.5">混凝土 18%</text>
+            <rect x="160" y="102" width="9" height="9" rx="1.5" fill="#63533A"/>
+            <text class="chart-legend" x="177" y="110.5">石材 7%</text>
+            <rect x="160" y="126" width="9" height="9" rx="1.5" fill="#3E362A"/>
+            <text class="chart-legend" x="177" y="134.5">木材 5%</text>
+          </g>
+        </svg>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">保护状态监测</div>
+          <div class="card-note">2025 年度</div>
         </div>
+        <div class="stat">
+          <div class="stat-row"><span class="stat-k">整体结构安全</span><span class="stat-v">良好 · 92%</span></div>
+          <div class="meter"><i style="width:92%"></i></div>
+        </div>
+        <div class="stat">
+          <div class="stat-row"><span class="stat-k">外墙保存状态</span><span class="stat-v">一般 · 68%</span></div>
+          <div class="meter"><i style="width:68%"></i></div>
+        </div>
+        <div class="stat">
+          <div class="stat-row"><span class="stat-k">内部完整度</span><span class="stat-v">较好 · 81%</span></div>
+          <div class="meter"><i style="width:81%"></i></div>
+        </div>
+        <div class="stat">
+          <div class="stat-row"><span class="stat-k">周边环境保护</span><span class="stat-v is-warn">需改善 · 46%</span></div>
+          <div class="meter is-warn"><i style="width:46%"></i></div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ══ 关系网络 ══ -->
+    <section class="view" data-view="network">
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">「人 — 楼 — 物」关系网络</div>
+          <div class="card-note">点击节点查看</div>
+        </div>
+        <div class="network-wrap">
+          <svg class="network-svg" viewBox="0 0 300 224" role="img"
+               aria-label="人、楼、物关系网络图：以碉楼群为中心，连接四位华侨、三类物件与两处海外地名">
+            <defs>
+              <radialGradient id="centerGrad" cx="50%" cy="45%">
+                <stop offset="0%"   stop-color="#E4CB95"/>
+                <stop offset="100%" stop-color="#A98A52"/>
+              </radialGradient>
+            </defs>
+
+            <!-- 连线 -->
+            <g stroke="#C6A66A" stroke-width="0.9" opacity="0.4">
+              <line x1="73"  y1="62"  x2="128" y2="98"/>
+              <line x1="73"  y1="162" x2="128" y2="126"/>
+              <line x1="227" y1="62"  x2="172" y2="98"/>
+              <line x1="227" y1="162" x2="172" y2="126"/>
+              <line x1="43"  y1="112" x2="126" y2="112" stroke-dasharray="3,3"/>
+              <line x1="257" y1="112" x2="174" y2="112" stroke-dasharray="3,3"/>
+              <line x1="150" y1="35"  x2="150" y2="88"  stroke-dasharray="3,3"/>
+              <line x1="115" y1="196" x2="138" y2="134" stroke-width="0.7" stroke-dasharray="2,3"/>
+              <line x1="185" y1="196" x2="162" y2="134" stroke-width="0.7" stroke-dasharray="2,3"/>
+            </g>
+
+            <!-- 人物 -->
+            <g fill="#A98A52" stroke="#E4CB95" stroke-width="1.5">
+              <circle cx="62" cy="56" r="17"/><circle cx="62" cy="168" r="17"/>
+              <circle cx="238" cy="56" r="17"/><circle cx="238" cy="168" r="17"/>
+            </g>
+            <g font-size="9" fill="#F0EBE1" text-anchor="middle" style="font-family:var(--sans)">
+              <text x="62" y="59.5">江活钦</text><text x="62" y="171.5">江梓桥</text>
+              <text x="238" y="59.5">江彰柏</text><text x="238" y="171.5">江瑞莲</text>
+            </g>
+
+            <!-- 物件 -->
+            <g fill="#2E2A22" stroke="#C6A66A" stroke-width="1.1">
+              <circle cx="30" cy="112" r="13"/><circle cx="270" cy="112" r="13"/><circle cx="150" cy="22" r="13"/>
+            </g>
+            <g font-size="8" fill="#A79E8F" text-anchor="middle" style="font-family:var(--sans)">
+              <text x="30" y="115">侨批</text><text x="270" y="115">家书</text><text x="150" y="25">旧照</text>
+            </g>
+
+            <!-- 地名 -->
+            <g fill="#211F1A" stroke="#8A7248" stroke-width="1.1">
+              <circle cx="115" cy="200" r="13"/><circle cx="185" cy="200" r="13"/>
+            </g>
+            <g font-size="8" fill="#8A8175" text-anchor="middle" style="font-family:var(--sans)">
+              <text x="115" y="203">旧金山</text><text x="185" y="203">加拿大</text>
+            </g>
+
+            <!-- 中心 -->
+            <circle cx="150" cy="112" r="25" fill="url(#centerGrad)"/>
+            <circle cx="150" cy="112" r="31" fill="none" stroke="#C6A66A" stroke-width="0.8" opacity="0.42"/>
+            <text x="150" y="110" text-anchor="middle" font-size="10" font-weight="700" fill="#0A0908" style="font-family:var(--serif)">碉楼群</text>
+            <text x="150" y="122" text-anchor="middle" font-size="7" fill="rgba(10,9,8,.7)" style="font-family:var(--sans)">36 座</text>
+
+            <!-- 可点击热区（透明，覆盖可见元素） -->
+            <g class="node-hit" data-type="person" data-id="0" tabindex="0" role="button" aria-label="江活钦">
+              <circle cx="62" cy="56" r="19" fill="transparent" stroke="transparent" stroke-width="2"/>
+            </g>
+            <g class="node-hit" data-type="person" data-id="1" tabindex="0" role="button" aria-label="江梓桥">
+              <circle cx="62" cy="168" r="19" fill="transparent" stroke="transparent" stroke-width="2"/>
+            </g>
+            <g class="node-hit" data-type="person" data-id="2" tabindex="0" role="button" aria-label="江彰柏">
+              <circle cx="238" cy="56" r="19" fill="transparent" stroke="transparent" stroke-width="2"/>
+            </g>
+            <g class="node-hit" data-type="person" data-id="3" tabindex="0" role="button" aria-label="江瑞莲">
+              <circle cx="238" cy="168" r="19" fill="transparent" stroke="transparent" stroke-width="2"/>
+            </g>
+            <g class="node-hit" data-type="object" data-id="0" tabindex="0" role="button" aria-label="侨批">
+              <circle cx="30" cy="112" r="15" fill="transparent" stroke="transparent" stroke-width="2"/>
+            </g>
+            <g class="node-hit" data-type="object" data-id="1" tabindex="0" role="button" aria-label="家书">
+              <circle cx="270" cy="112" r="15" fill="transparent" stroke="transparent" stroke-width="2"/>
+            </g>
+            <g class="node-hit" data-type="object" data-id="2" tabindex="0" role="button" aria-label="旧照片">
+              <circle cx="150" cy="22" r="15" fill="transparent" stroke="transparent" stroke-width="2"/>
+            </g>
+            <g class="node-hit" data-type="place" data-id="0" tabindex="0" role="button" aria-label="旧金山">
+              <circle cx="115" cy="200" r="15" fill="transparent" stroke="transparent" stroke-width="2"/>
+            </g>
+            <g class="node-hit" data-type="place" data-id="1" tabindex="0" role="button" aria-label="加拿大">
+              <circle cx="185" cy="200" r="15" fill="transparent" stroke="transparent" stroke-width="2"/>
+            </g>
+          </svg>
+          <div class="network-legend">
+            <span class="legend-item"><span class="legend-dot" style="background:#C6A66A"></span>碉楼</span>
+            <span class="legend-item"><span class="legend-dot" style="background:#A98A52"></span>人物</span>
+            <span class="legend-item"><span class="legend-dot" style="background:#2E2A22;border:1px solid #C6A66A"></span>物件</span>
+            <span class="legend-item"><span class="legend-dot" style="background:#211F1A;border:1px solid #8A7248"></span>地名</span>
+          </div>
+        </div>
+        <div class="sec">
+          <p>以洛场村碉楼群为枢纽，串联建造者、侨批文书与海外侨居地。四人、三物、两地构成华侨「汇款—建楼—反哺」的完整链条。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ 侨批档案 ══ -->
+    <section class="view" data-view="qiaopi">
+      <div class="card" style="padding:14px">
+        <button class="qp-card" data-qp="0">
+          <span class="qp-seal" aria-hidden="true">批</span>
+          <span class="qp-meta"><b>江活钦家书</b><span>1932 年 · 美国旧金山寄回</span></span>
+          <span class="qp-arrow" aria-hidden="true">›</span>
+        </button>
+        <button class="qp-card" data-qp="1">
+          <span class="qp-seal" aria-hidden="true">批</span>
+          <span class="qp-meta"><b>江梓桥汇款单</b><span>1937 年 · 侨批凭证</span></span>
+          <span class="qp-arrow" aria-hidden="true">›</span>
+        </button>
+        <button class="qp-card" data-qp="2">
+          <span class="qp-seal" aria-hidden="true">信</span>
+          <span class="qp-meta"><b>江彰柏书信</b><span>1925 年 · 返乡探亲</span></span>
+          <span class="qp-arrow" aria-hidden="true">›</span>
+        </button>
+        <button class="qp-card" data-qp="3">
+          <span class="qp-seal" aria-hidden="true">契</span>
+          <span class="qp-meta"><b>彰德阁建档</b><span>1923 年 · 建筑契约</span></span>
+          <span class="qp-arrow" aria-hidden="true">›</span>
+        </button>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">侨批情感强度</div>
+          <div class="card-note">1923—1940</div>
+        </div>
+        <svg class="chart" viewBox="0 0 300 112" role="img"
+             aria-label="1923 至 1940 年侨批情感强度折线图，1932 年达到峰值 85">
+          <defs>
+            <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%"   stop-color="rgba(198,166,106,.42)"/>
+              <stop offset="100%" stop-color="rgba(198,166,106,.02)"/>
+            </linearGradient>
+          </defs>
+          <line x1="26" y1="95" x2="278" y2="95" stroke="rgba(198,166,106,.17)" stroke-width="1"/>
+          <line x1="26" y1="55" x2="278" y2="55" stroke="rgba(198,166,106,.08)" stroke-width="1" stroke-dasharray="2,4"/>
+          <path d="M30,52.6 L70,40.4 L110,27.2 L150,15 L190,29.1 L230,43.2 L270,57.4 L270,95 L30,95 Z" fill="url(#areaGrad)"/>
+          <polyline points="30,52.6 70,40.4 110,27.2 150,15 190,29.1 230,43.2 270,57.4"
+                    fill="none" stroke="#C6A66A" stroke-width="2"
+                    stroke-linejoin="round" stroke-linecap="round"/>
+          <g fill="#A98A52">
+            <circle cx="30" cy="52.6" r="2"><title>1923：45</title></circle>
+            <circle cx="70" cy="40.4" r="2"><title>1926：58</title></circle>
+            <circle cx="110" cy="27.2" r="2"><title>1929：72</title></circle>
+            <circle cx="190" cy="29.1" r="2"><title>1935：70</title></circle>
+            <circle cx="230" cy="43.2" r="2"><title>1938：55</title></circle>
+            <circle cx="270" cy="57.4" r="2"><title>1940：40</title></circle>
+          </g>
+          <circle cx="150" cy="15" r="3" fill="#E4CB95"><title>1932：85（峰值）</title></circle>
+          <text class="chart-label" x="30"  y="108" text-anchor="middle">1923</text>
+          <text class="chart-label" x="110" y="108" text-anchor="middle">1929</text>
+          <text class="chart-label" x="190" y="108" text-anchor="middle">1935</text>
+          <text class="chart-label" x="270" y="108" text-anchor="middle">1940</text>
+        </svg>
+        <div class="cloud cloud-mini" id="qiaopiCloud"></div>
+        <div class="cloud-legend">
+          <div class="cloud-scale" aria-hidden="true">
+            <span>词频</span>
+            <i style="width:5px;height:5px;opacity:.45"></i>
+            <i style="width:8px;height:8px;opacity:.7"></i>
+            <i style="width:11px;height:11px"></i>
+          </div>
+          <div id="qiaopiHint">悬停查看权重</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ 文化标签 ══ -->
+    <section class="view" data-view="tags">
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">侨乡文化标签</div>
+          <div class="card-note" id="cloudCount"></div>
+        </div>
+        <div class="cloud" id="tagCloud"></div>
+        <div class="cloud-legend">
+          <div class="cloud-scale" aria-hidden="true">
+            <span>词频</span>
+            <i style="width:5px;height:5px;opacity:.45"></i>
+            <i style="width:8px;height:8px;opacity:.7"></i>
+            <i style="width:11px;height:11px"></i>
+          </div>
+          <div id="cloudHint">悬停查看权重</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">数字化技术路径</div>
+          <div class="card-note">4 项</div>
+        </div>
+        <div class="stat">
+          <div class="stat-row"><span class="stat-k">三维激光扫描</span><span class="stat-v">点云 · 0.5 cm</span></div>
+        </div>
+        <div class="stat">
+          <div class="stat-row"><span class="stat-k">倾斜摄影建模</span><span class="stat-v">实景三维 · 8 视角</span></div>
+        </div>
+        <div class="stat">
+          <div class="stat-row"><span class="stat-k">Web3D 轻量化</span><span class="stat-v">GLB · Draco 压缩</span></div>
+        </div>
+        <div class="stat">
+          <div class="stat-row"><span class="stat-k">虚拟漫游展示</span><span class="stat-v">实时渲染 · 跨端</span></div>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+</aside>
+
+<!-- 关于本项目 -->
+<div class="modal" id="aboutModal" role="dialog" aria-modal="true" aria-labelledby="aboutTitle">
+  <div class="modal-box">
+    <h2 id="aboutTitle">洛场村碉楼群数字化保护</h2>
+    <div class="sub">DIGITAL PRESERVATION · HUADU LUOCHANG</div>
+    <p>洛场村位于广州市花都区花山镇，是典型的侨乡村落。村内保存的碉楼群由旅外华侨于清末至民国年间陆续建造，融合岭南传统营造与西洋建筑语汇，是华侨「汇款建楼、反哺乡土」历史的实物见证。</p>
+    <p>本平台以三维数字化技术对碉楼群进行存档与展示：通过三维激光扫描采集点云、倾斜摄影还原实景，再以 Web3D 轻量化方案在浏览器中实时渲染，使公众无需到场即可漫游碉楼群全貌。</p>
+    <p>平台同时整理侨批文书、人物档案与海内外迁徙线索，将建筑遗产与侨乡记忆并置呈现，为文化传播、学校教学与社区活化提供可复用的数字资源。</p>
+    <div class="sec">
+      <h4>操作说明</h4>
+      <p>拖动旋转视角，滚轮或双指缩放，点击建筑上方光点查看碉楼详情；点击底部年代轴了解各历史阶段。顶栏「逐楼鉴赏」可逐座聚焦碉楼（支持 ← → 键切换），已接入实景三维模型的碉楼按真实尺度展示。面板内容可随时以 Esc 键或遮罩关闭。</p>
     </div>
-
-    <div class="fixed bottom-0 left-0 right-0 h-24 z-50 flex items-center justify-center"
-         style="background: linear-gradient(0deg, rgba(43,31,26,0.98), rgba(43,31,26,0.85)); border-top: 2px solid #8B6E55;">
-        <div class="relative w-full max-w-4xl px-8">
-            <div class="timeline-line"></div>
-            <div class="flex justify-between relative">
-                <div class="flex flex-col items-center cursor-pointer timeline-item" data-era="qing">
-                    <div class="timeline-dot active"></div>
-                    <div class="mt-2 text-center"><div class="text-xs font-bold" style="color:#C87941">清末建造</div><div class="text-[10px]" style="color:#D4C2A8">1840-1911</div></div>
-                </div>
-                <div class="flex flex-col items-center cursor-pointer timeline-item" data-era="republic">
-                    <div class="timeline-dot"></div>
-                    <div class="mt-2 text-center"><div class="text-xs font-bold" style="color:#F6E9D7">民国鼎盛</div><div class="text-[10px]" style="color:#D4C2A8">1912-1949</div></div>
-                </div>
-                <div class="flex flex-col items-center cursor-pointer timeline-item" data-era="war">
-                    <div class="timeline-dot"></div>
-                    <div class="mt-2 text-center"><div class="text-xs font-bold" style="color:#F6E9D7">抗战时期</div><div class="text-[10px]" style="color:#D4C2A8">1937-1945</div></div>
-                </div>
-                <div class="flex flex-col items-center cursor-pointer timeline-item" data-era="modern">
-                    <div class="timeline-dot"></div>
-                    <div class="mt-2 text-center"><div class="text-xs font-bold" style="color:#F6E9D7">近代闲置</div><div class="text-[10px]" style="color:#D4C2A8">1949-2000</div></div>
-                </div>
-                <div class="flex flex-col items-center cursor-pointer timeline-item" data-era="digital">
-                    <div class="timeline-dot"></div>
-                    <div class="mt-2 text-center"><div class="text-xs font-bold" style="color:#F6E9D7">数字化保护</div><div class="text-[10px]" style="color:#C87941">2025-至今</div></div>
-                </div>
-            </div>
-        </div>
+    <div class="modal-close-row">
+      <button class="pill" id="aboutClose">关闭</button>
     </div>
+  </div>
+</div>
 
-    <div id="timelineModal" class="modal-overlay">
-        <div class="modal-content p-6 max-w-2xl">
-            <div class="flex justify-between items-start mb-4">
-                <div>
-                    <h3 id="timelineTitle" class="text-xl font-bold" style="color:#F6E9D7"></h3>
-                    <p id="timelinePeriod" class="text-xs mt-1" style="color:#C87941"></p>
-                </div>
-                <button id="closeTimelineModal" class="text-2xl hover:opacity-70" style="color:#8B6E55">×</button>
-            </div>
-            <div id="timelineImage" class="timeline-image-container mb-4">
-                <div class="timeline-image-placeholder">清末建造</div>
-            </div>
-            <div class="space-y-3">
-                <div>
-                    <h4 class="font-bold text-sm mb-1" style="color:#C87941">📍 地理人文</h4>
-                    <p id="timelineGeography" class="text-xs leading-relaxed" style="color:#D4C2A8"></p>
-                </div>
-                <div>
-                    <h4 class="font-bold text-sm mb-1" style="color:#C87941">📜 历史背景</h4>
-                    <p id="timelineHistory" class="text-xs leading-relaxed" style="color:#D4C2A8"></p>
-                </div>
-                <div>
-                    <h4 class="font-bold text-sm mb-1" style="color:#C87941">🏛️ 建筑特点</h4>
-                    <p id="timelineArchitecture" class="text-xs leading-relaxed" style="color:#D4C2A8"></p>
-                </div>
-            </div>
-        </div>
-    </div>
+<!-- 首屏 -->
+<div class="boot" id="boot">
+  <div class="boot-inner">
+    <div class="boot-mark" aria-hidden="true"></div>
+    <div class="boot-t">洛场村碉楼群</div>
+    <div class="boot-s" id="bootText">正在加载三维场景</div>
+  </div>
+</div>
 
-    <div id="infoModal" class="modal-overlay">
-        <div class="modal-content p-6 max-w-2xl">
-            <div class="flex justify-between items-start mb-4">
-                <div>
-                    <h3 id="modalTitle" class="text-xl font-bold" style="color:#F6E9D7"></h3>
-                    <p id="modalEra" class="text-xs mt-1" style="color:#C87941"></p>
-                </div>
-                <button id="closeModal" class="text-2xl hover:opacity-70" style="color:#8B6E55">×</button>
-            </div>
-            <div id="imageContainer" class="relative w-full h-[280px] bg-[#1a1210] rounded-lg border-2 border-[#8B6E55] overflow-hidden flex items-center justify-center">
-                <button id="prevImage" class="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-black/60 hover:bg-black/80 text-white rounded-full z-10 text-lg">‹</button>
-                <div id="loadingSpinner" class="absolute inset-0 flex items-center justify-center bg-black/30">
-                    <div class="w-8 h-8 border-2 border-[#8B6E55] border-t-[#C87941] rounded-full animate-spin"></div>
-                </div>
-                <img id="modalImage" class="w-full h-full object-contain">
-                <button id="nextImage" class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-black/60 hover:bg-black/80 text-white rounded-full z-10 text-lg">›</button>
-            </div>
-            <div id="imageIndicator" class="flex justify-center gap-2 mt-2"></div>
-            <div class="space-y-3">
-                <div>
-                    <h4 class="font-bold text-sm mb-1" style="color:#C87941">🏛️ 建筑特色</h4>
-                    <p id="modalFeatures" class="text-xs leading-relaxed" style="color:#D4C2A8"></p>
-                </div>
-                <div>
-                    <h4 class="font-bold text-sm mb-1" style="color:#C87941">📜 历史意义</h4>
-                    <p id="modalStory" class="text-xs leading-relaxed" style="color:#D4C2A8"></p>
-                </div>
-            </div>
-        </div>
-    </div>
+<noscript>
+  <div class="noscript">
+    本站的三维展示需要启用 JavaScript。<br>
+    文字与图片资料仍可在《数字化技术在华侨建筑遗产保护中的应用》报告中查阅。
+  </div>
+</noscript>
 
-    <div id="qiaopiModal" class="modal-overlay">
-        <div class="qiaopi-modal-content">
-            <div class="flex justify-between items-start mb-4">
-                <div>
-                    <h3 id="qiaopiTitle" class="text-xl font-bold" style="color:#F6E9D7"></h3>
-                    <p id="qiaopiEra" class="text-xs mt-1" style="color:#C87941"></p>
-                </div>
-                <button id="closeQiaopiModal" class="text-2xl hover:opacity-70" style="color:#8B6E55">×</button>
-            </div>
-            <div id="qiaopiImage" class="qiaopi-detail-image">
-                <span style="color:#C87941;font-size:3rem;">✉</span>
-            </div>
-            <div>
-                <h4 class="font-bold text-sm mb-2" style="color:#C87941">📄 档案内容</h4>
-                <p id="qiaopiContent" class="text-xs leading-relaxed" style="color:#D4C2A8"></p>
-            </div>
-            <div class="qiaopi-detail-text">
-                <h4 class="font-bold text-sm mb-2" style="color:#C87941;">🏛️ 历史背景</h4>
-                <p id="qiaopiStory" class="text-xs leading-relaxed" style="color:#D4C2A8;"></p>
-            </div>
-        </div>
-    </div>
+<script>
+/* ══════════════════════════════════════════════════════════════
+   1 · 配置与数据
+   ══════════════════════════════════════════════════════════════ */
 
-    <div id="networkModal" class="modal-overlay">
-        <div class="network-modal-content">
-            <div class="flex justify-between items-start mb-4">
-                <div>
-                    <h3 id="networkTitle" class="text-lg font-bold" style="color:#F6E9D7"></h3>
-                    <p id="networkType" class="text-xs mt-1" style="color:#C87941"></p>
-                </div>
-                <button id="closeNetworkModal" class="text-2xl hover:opacity-70" style="color:#8B6E55">×</button>
-            </div>
-            <div id="networkImage" class="w-full h-32 rounded-lg mb-3 flex items-center justify-center" style="background:linear-gradient(135deg,#4a3728,#3d2d26);border:1px solid #8B6E55;"></div>
-            <div>
-                <p id="networkDesc" class="text-xs leading-relaxed" style="color:#D4C2A8"></p>
-            </div>
-        </div>
-    </div>
+/* 逐楼真实 GLB 模型登记表（可选）。
+   把 glb 放入 models/ 并在此登记即可，未登记的楼继续使用数字体块占位。
+   - overviewScale / rotY：全村概览中的缩放与朝向（真实米制模型远大于风格化体块）
+   - 聚焦（逐楼鉴赏）模式恒按真实尺度 1:1 展示 */
+const BUILDING_MODELS = {
+    feijilou:      { url: 'models/feijilou.glb',      overviewScale: 0.26, rotY: -Math.PI * 0.75 },
+    yingyangtang:  { url: 'models/yingyangtang.glb',  overviewScale: 0.38, rotY: 0 },
+    zhangbaijiashu:{ url: 'models/zhangbaijiashu.glb',overviewScale: 0.55, rotY: 0 }
+};
 
-    <div id="hotspotContainer" class="fixed top-0 left-0 w-full h-full z-30"></div>
+const qiaopiData = [
+    {
+        title: "江活钦家书",
+        era: "1932 年 · 美国旧金山寄回",
+        seal: "批",
+        content: "父亲大人膝下：男自抵美后，在餐馆做工，省吃俭用，月寄银圆二十元回家，以作家用及修缮碉楼之需。今闻家乡盗匪猖獗，望父亲大人小心保管银圆，加固碉楼防御工事……",
+        story: "此家书为华侨江活钦于 1932 年寄回，详述其在美生活状况及对家乡亲人的牵挂。信中提及汇款用于碉楼维护，反映华侨与家乡的经济纽带。",
+        image: ""
+    },
+    {
+        title: "江梓桥汇款单",
+        era: "1937 年 · 侨批凭证",
+        seal: "批",
+        content: "凭此单可在花都侨批局领取美元汇款二十元，用于建造飞机楼工程款项。汇款人：江梓桥，收款人：江氏家族，汇款地址：美国洛杉矶……",
+        story: "此侨批凭证见证了 1937 年江梓桥汇款建造飞机楼的历史。碉楼建造资金主要来源于海外华侨汇款，体现了侨乡建筑与海外经济的紧密联系。",
+        image: ""
+    },
+    {
+        title: "江彰柏书信",
+        era: "1925 年 · 返乡探亲",
+        seal: "信",
+        content: "吾弟彰柏自美洲归省，见家乡学校简陋，故出资改建为家塾，既供族中子弟读书，又可作防御之用。望后人珍惜此教育之地，传承华侨爱国爱乡之精神……",
+        story: "江彰柏书信表明其捐资建造彰柏家塾的初衷，既为教育也为防御。反映华侨对家乡教育事业的重视和贡献。",
+        image: ""
+    },
+    {
+        title: "彰德阁建档",
+        era: "1923 年 · 建筑契约",
+        seal: "契",
+        content: "立约人江氏家族与建筑承包商约定：建造彰德阁三层洋楼一座，工程款共计鹰洋三千元，分三期支付。建筑样式需融合中西，外部西洋风格，内部中式布局……",
+        story: "此建筑契约详细规定了彰德阁（美成小学钟楼）的建造规格和付款方式，是研究民国时期侨乡建筑的重要史料。",
+        image: ""
+    }
+];
 
-    <script>
-        let scene, camera, renderer, controls, model;
-        let hotspots = [];
-        let hotspotElements = [];
+const networkNodeData = {
+    person: [
+        { id: 0, name: "江活钦", title: "华侨先驱", desc: "洛场村著名华侨，1910 年赴美国旧金山谋生。初期在餐馆做工，后经营杂货店。1925 年汇款回家建造鹰扬堂（斑马楼），将西方建筑风格带回故乡。其家书详细记载了华侨在美生活状况及对家乡的牵挂，是研究侨乡历史的重要文献。", image: "👤" },
+        { id: 1, name: "江梓桥", title: "碉楼建造者", desc: "1937 年从美国洛杉矶汇款建造飞机楼（江梓桥楼）。碉楼采用飞机造型设计，象征其对航空业的向往。抗战爆发后积极捐款支持抗日，是洛场村华侨爱国典范。", image: "👤" },
+        { id: 2, name: "江彰柏", title: "教育慈善家", desc: "旅美华侨，1920 年代捐资建造彰柏家塾，将书塾与碉楼功能结合。既为族中子弟提供教育场所，又增强家乡防御能力。体现华侨重视教育、回报家乡的优良传统。", image: "👤" },
+        { id: 3, name: "江瑞莲", title: "抗战时期守护者", desc: "瑞莲楼建造者，碉楼在抗战时期发挥防御作用。楼体保留至今的弹痕见证了那段峥嵘岁月。江瑞莲及其家族成员在海外谋生同时心系故里，支援家乡建设。", image: "👤" }
+    ],
+    object: [
+        { id: 0, name: "侨批", title: "华侨汇款凭证", desc: "侨批是华侨寄回国内的汇款凭证和家书的合称。花都洛场村的侨批记录显示，碉楼建造资金主要来源于海外汇款。侨批见证了华侨与家乡的经济联系，是侨乡文化的重要载体。", image: "✉" },
+        { id: 1, name: "家书", title: "游子思乡之情", desc: "华侨家书记录了海外游子的思乡之情和汇款用途。信中常见「平安」「挂念」「寄钱」等关键词，体现了华侨对家人的牵挂和对家乡建设的支持。", image: "✉" },
+        { id: 2, name: "旧照片", title: "历史影像资料", desc: "碉楼旧照片记录了建筑原貌和华侨家庭生活。这些照片对于研究侨乡建筑风格演变、华侨海外生活状况具有重要史料价值，是数字化保护的重要内容。", image: "assets/oldphoto_1.webp" }
+    ],
+    place: [
+        { id: 0, name: "旧金山", title: "美国西海岸侨乡", desc: "旧金山是早期广东华侨的主要聚居地。洛场村华侨多在此登陆入境，从事餐饮、洗衣、杂货等行业。他们将辛苦积攒的财富寄回故乡，建造了如今保留的碉楼群。", image: "🌉" },
+        { id: 1, name: "加拿大", title: "北美华侨新家园", desc: "部分洛场村华侨后来迁移至加拿大温哥华、多伦多等地。他们继续汇款支持家乡建设，并在碉楼建筑中融入北美建筑元素，形成独特的中西合璧风格。", image: "🍁" }
+    ]
+};
 
-        const qiaopiData = [
-            {
-                title: "江活钦家书",
-                era: "1932年 · 美国旧金山寄回",
-                content: "父亲大人膝下：男自抵美后，在餐馆做工，省吃俭用，月寄银圆二十元回家，以作家用及修缮碉楼之需。今闻家乡盗匪猖獗，望父亲大人小心保管银圆，加固碉楼防御工事...",
-                story: "此家书为华侨江活钦于1932年寄回，详述其在美生活状况及对家乡亲人的牵挂。信中提及汇款用于碉楼维护，反映华侨与家乡的经济纽带。",
-                image: "assets/qiaopi_0.jpg"
-            },
-            {
-                title: "江梓桥汇款单",
-                era: "1937年 · 侨批凭证",
-                content: "凭此单可在花都侨批局领取美元汇款二十元，用于建造飞机楼工程款项。汇款人：江梓桥，收款人：江氏家族，汇款地址：美国洛杉矶...",
-                story: "此侨批凭证见证了1937年江梓桥汇款建造飞机楼的历史。碉楼建造资金主要来源于海外华侨汇款，体现了侨乡建筑与海外经济的紧密联系。",
-                image: "assets/qiaopi_1.jpg"
-            },
-            {
-                title: "江彰柏书信",
-                era: "1925年 · 返乡探亲",
-                content: "吾弟彰柏自美洲归省，见家乡学校简陋，故出资改建为家塾，既供族中子弟读书，又可作防御之用。望后人珍惜此教育之地，传承华侨爱国爱乡之精神...",
-                story: "江彰柏书信表明其捐资建造彰柏家塾的初衷，既为教育也为防御。反映华侨对家乡教育事业的重视和贡献。",
-                image: "assets/qiaopi_2.jpg"
-            },
-            {
-                title: "彰德阁建档",
-                era: "1923年 · 建筑契约",
-                content: "立约人江氏家族与建筑承包商约定：建造彰德阁三层洋楼一座，工程款共计鹰洋三千元，分三期支付。建筑样式需融合中西，外部西洋风格，内部中式布局...",
-                story: "此建筑契约详细规定了彰德阁（美成小学钟楼）的建造规格和付款方式，是研究民国时期侨乡建筑的重要史料。",
-                image: "assets/qiaopi_3.jpg"
-            }
-        ];
+/* short：三维场景中热点标签用的简称
+   position：热点锚点世界坐标，宜取楼体顶部上方约 1 单位处。
+   若换成真实 GLB 模型，需按模型实际尺度重新标定这三个数值。 */
+const diaolouData = {
+    yingyangtang: {
+        name: "鹰扬堂（鹰楼／斑马楼）",
+        short: "鹰扬堂",
+        era: "华侨江活钦建造",
+        features: "三层半结构，红砖青砖交错斑马纹外墙，楼顶雄鹰浮雕装饰，是洛场村最具特色的碉楼之一",
+        story: "由华侨江活钦建造，斑马纹外墙彰显独特建筑风格，楼顶雄鹰象征华侨的远大志向与身份地位，是洛场村独特建筑代表",
+        images: ["assets/yingyangtang.webp", "assets/yingyangtang2.webp", "assets/yingyangtang3.webp"],
+        position: { x: -8, y: 11.0, z: -5 }
+    },
+    feijilou: {
+        name: "江梓桥楼（飞机楼）",
+        short: "飞机楼",
+        era: "1937 年（民国 26 年）",
+        features: "三层建筑，机翼形平面布局，欧式门柱设计，阳台壁画精美，体现中西合璧风格",
+        story: "民国时期高水平侨乡建筑的代表，飞机造型象征华侨对现代化的追求，是洛场村标志性建筑",
+        images: ["assets/feijilou.webp", "assets/feijilou2.webp"],
+        position: { x: 5, y: 6.4, z: 3 }
+    },
+    zhangbaijiashu: {
+        name: "彰柏家塾",
+        short: "彰柏家塾",
+        era: "1920 年代",
+        features: "书塾与碉楼结合的独特建筑，配有小花园，现为书画工作室使用",
+        story: "由旅美华侨江彰柏资助建造，体现华侨重视家乡教育文化传承的理念",
+        images: ["assets/zhangbai.webp", "assets/zhangbai2.webp", "assets/zhangbai3.webp"],
+        position: { x: -3, y: 7.2, z: 6 }
+    },
+    zhangdege: {
+        name: "彰德阁（美成小学钟楼）",
+        short: "彰德阁",
+        era: "1923 年（民国 12 年），1997 年重修",
+        features: "中西合璧风格钟楼，建筑面积约 53 平方米，兼具实用与装饰功能",
+        story: "美成小学地标性建筑，见证华侨热心家乡教育事业的历史，是侨乡文化的重要象征",
+        images: ["assets/zhangde.webp", "assets/zhangde2.webp"],
+        position: { x: 8, y: 11.3, z: -4 }
+    },
+    ruilianlou: {
+        name: "瑞莲楼",
+        short: "瑞莲楼",
+        era: "抗战时期",
+        features: "防御型碉楼设计，墙体至今保留抗战时期弹痕，历史痕迹清晰可见",
+        story: "抗日战争时期重要防御据点，墙体弹痕是民族抗争历史的鲜活记忆，具有重要历史价值",
+        images: ["assets/ruilian.webp", "assets/ruilian2.webp"],
+        position: { x: 0, y: 10.0, z: -6 }
+    }
+};
 
-        const networkNodeData = {
-            person: [
-                { id: 0, name: "江活钦", title: "华侨先驱", desc: "洛场村著名华侨，1910年赴美国旧金山谋生。初期在餐馆做工，后经营杂货店。1925年汇款回家建造鹰扬堂（斑马楼），将西方建筑风格带回故乡。其家书详细记载了华侨在美生活状况及对家乡的牵挂，是研究侨乡历史的重要文献。", image: "👤" },
-                { id: 1, name: "江梓桥", title: "碉楼建造者", desc: "1937年从美国洛杉矶汇款建造飞机楼（江梓桥楼）。碉楼采用飞机造型设计，象征其对航空业的向往。抗战爆发后积极捐款支持抗日，是洛场村华侨爱国典范。", image: "👤" },
-                { id: 2, name: "江彰柏", title: "教育慈善家", desc: "旅美华侨，1920年代捐资建造彰柏家塾，将书塾与碉楼功能结合。既为族中子弟提供教育场所，又增强家乡防御能力。体现华侨重视教育、回报家乡的优良传统。", image: "👤" },
-                { id: 3, name: "江瑞莲", title: "抗战时期守护者", desc: "瑞莲楼建造者，碉楼在抗战时期发挥防御作用。楼体保留至今的弹痕见证了那段峥嵘岁月。江瑞莲及其家族成员在海外谋生同时心系故里，支援家乡建设。", image: "👤" }
-            ],
-            object: [
-                { id: 0, name: "侨批", title: "华侨汇款凭证", desc: "侨批是华侨寄回国内的汇款凭证和家书的合称。花都洛场村的侨批记录显示，碉楼建造资金主要来源于海外汇款。侨批见证了华侨与家乡的经济联系，是侨乡文化的重要载体。", image: "✉" },
-                { id: 1, name: "家书", title: "游子思乡之情", desc: "华侨家书记录了海外游子的思乡之情和汇款用途。信中常见'平安'、'挂念'、'寄钱'等关键词，体现了华侨对家人的牵挂和对家乡建设的支持。", image: "📜" },
-                { id: 2, name: "旧照片", title: "历史影像资料", desc: "碉楼旧照片记录了建筑原貌和华侨家庭生活。这些照片对于研究侨乡建筑风格演变、华侨海外生活状况具有重要史料价值，是数字化保护的重要内容。", image: "assets/oldphoto_1.jpg" }
-            ],
-            place: [
-                { id: 0, name: "旧金山", title: "美国西海岸侨乡", desc: "旧金山是早期广东华侨的主要聚居地。洛场村华侨多在此登陆入境，从事餐饮、洗衣、杂货等行业。他们将辛苦积攒的财富寄回故乡，建造了如今保留的碉楼群。", image: "🗽" },
-                { id: 1, name: "加拿大", title: "北美华侨新家园", desc: "部分洛场村华侨后来迁移至加拿大温哥华、多伦多等地。他们继续汇款支持家乡建设，并在碉楼建筑中融入北美建筑元素，形成独特的中西合璧风格。", image: "🍁" }
-            ]
-        };
+const viewPositions = {
+    overhead: { camera: { x: 0, y: 40, z: 0.1 }, target: { x: 0, y: 0, z: 0 } },
+    front:    { camera: { x: 0, y: 14, z: 28 }, target: { x: 0, y: 4, z: 0 } },
+    detail:   { camera: { x: 10, y: 9, z: 10 }, target: { x: 2, y: 5, z: 2 } }
+};
 
-        const diaolouData = {
-            yingyangtang: {
-                name: "鹰扬堂（鹰楼/斑马楼）",
-                era: "华侨江活钦建造",
-                features: "三层半结构，红砖青砖交错斑马纹外墙，楼顶雄鹰浮雕装饰，是洛场村最具特色的碉楼之一",
-                story: "由华侨江活钦建造，斑马纹外墙彰显独特建筑风格，楼顶雄鹰象征华侨的远大志向与身份地位，是洛场村独特建筑代表",
-                images: ["assets/yingyangtang.jpg", "assets/yingyangtang2.jpg", "assets/yingyangtang3.jpg"],
-                position: { x: -8, y: 6, z: -5 }
-            },
-            feijilou: {
-                name: "江梓桥楼（飞机楼）",
-                era: "1937年（民国26年）",
-                features: "三层建筑，机翼形平面布局，欧式门柱设计，阳台壁画精美，体现中西合璧风格",
-                story: "民国时期高水平侨乡建筑的代表，飞机造型象征华侨对现代化的追求，是洛场村标志性建筑",
-                images: ["assets/feijilou.jpg", "assets/feijilou2.jpg"],
-                position: { x: 5, y: 5, z: 3 }
-            },
-            zhangbaijiashu: {
-                name: "彰柏家塾",
-                era: "1920年代",
-                features: "书塾与碉楼结合的独特建筑，配有小花园，现为书画工作室使用",
-                story: "由旅美华侨江彰柏资助建造，体现华侨重视家乡教育文化传承的理念",
-                images: ["assets/zhangbai.jpg", "assets/zhangbai2.jpg", "assets/zhangbai3.jpg"],
-                position: { x: -3, y: 4, z: 6 }
-            },
-            zhangdege: {
-                name: "彰德阁（美成小学钟楼）",
-                era: "1923年（民国12年），1997年重修",
-                features: "中西合璧风格钟楼，建筑面积约53平方米，兼具实用与装饰功能",
-                story: "美成小学地标性建筑，见证华侨热心家乡教育事业的历史，是侨乡文化的重要象征",
-                images: ["assets/zhangde.jpg", "assets/zhangde2.jpg"],
-                position: { x: 8, y: 4, z: -4 }
-            },
-            ruilianlou: {
-                name: "瑞莲楼",
-                era: "抗战时期",
-                features: "防御型碉楼设计，墙体至今保留抗战时期弹痕，历史痕迹清晰可见",
-                story: "抗日战争时期重要防御据点，墙体弹痕是民族抗争历史的鲜活记忆，具有重要历史价值",
-                images: ["assets/ruilian.jpg", "assets/ruilian2.jpg"],
-                position: { x: 0, y: 5, z: -6 }
-            }
-        };
+const eraTimeline = {
+    qing: {
+        camera: { x: 16, y: 19, z: 16 },
+        target: { x: 0, y: 0, z: 0 },
+        title: "清末建造",
+        period: "1840—1911",
+        image: "assets/timeline_qing.webp",
+        geography: "洛场村位于花都区花山镇，地处广府文化核心区域。该村始建于清朝乾隆年间，是典型的侨乡村落，村内水道纵横，土地肥沃，为村民出海谋生提供了物质基础。",
+        history: "鸦片战争后，大量广东沿海居民远赴海外谋生。洛场村村民从咸丰年间开始漂洋过海，主要前往美国旧金山、加拿大等地从事餐饮、洗衣等行业。他们将辛苦积攒的财富寄回家乡，开始建造碉楼作为家族荣耀的象征。",
+        architecture: "清末碉楼多为二至三层，采用青砖砌筑，结构坚固。建筑风格以中式为主，融合岭南传统建筑特色，注重防御功能，设有瞭望窗和射击孔。"
+    },
+    republic: {
+        camera: { x: 20, y: 11, z: 0 },
+        target: { x: 0, y: 4, z: 0 },
+        title: "民国鼎盛",
+        period: "1912—1949",
+        image: "assets/timeline_republic.webp",
+        geography: "民国时期，洛场村成为花都地区重要的侨乡。村内华侨通过海外汇款建造了大量中西合璧的碉楼，形成独特的侨乡风貌。村前池塘环绕，村后青山相依，自然环境优美。",
+        history: "民国时期是洛场村碉楼建造的鼎盛时期。华侨江活钦、江梓桥等人先后回乡建造了鹰扬堂、飞机楼等标志性建筑。这些碉楼不仅是居住场所，更是华侨身份地位的象征，见证了洛场村的辉煌历史。",
+        architecture: "民国碉楼呈现中西合璧风格，采用红砖与青砖交错砌筑，形成独特的斑马纹外墙。建筑装饰华丽，楼顶常有浮雕装饰，如鹰扬堂的雄鹰浮雕，彰显主人的远大志向。"
+    },
+    war: {
+        camera: { x: 0, y: 16, z: 19 },
+        target: { x: 0, y: 0, z: 0 },
+        title: "抗战时期",
+        period: "1937—1945",
+        image: "assets/timeline_war.webp",
+        geography: "抗日战争时期，洛场村位于东江纵队活动区域。碉楼群在战乱中发挥了重要的防御作用，成为村民躲避战火的安全场所。",
+        history: "抗战爆发后，洛场村华侨积极支援祖国抗日，纷纷捐款捐物。村内碉楼成为抗日据点和避难所，墙体至今仍保留着战争时期的弹痕，见证了那段峥嵘岁月。",
+        architecture: "战时碉楼注重防御功能，墙体加厚，窗户缩小并加装铁栅。部分碉楼设有地道连接，形成完整的防御体系。"
+    },
+    modern: {
+        camera: { x: -13, y: 9, z: 13 },
+        target: { x: 0, y: 3, z: 0 },
+        title: "近代闲置",
+        period: "1949—2000",
+        image: "assets/timeline_modern.webp",
+        geography: "新中国成立后，洛场村逐渐恢复平静。随着经济发展，村民陆续搬出碉楼，部分建筑因年久失修成为危房。",
+        history: "改革开放后，村民生活水平提高，纷纷在村内新建房屋，传统碉楼逐渐被闲置。由于缺乏维护，部分碉楼出现墙体剥落、屋顶漏水等问题。",
+        architecture: "这一时期碉楼基本保持原貌，但缺乏修缮。部分碉楼被用作仓库或杂物间，建筑价值未被充分认识。"
+    },
+    digital: {
+        camera: { x: 0, y: 27, z: 0 },
+        target: { x: 0, y: 0, z: 0 },
+        title: "数字化保护",
+        period: "2025—至今",
+        image: "assets/timeline_digital.webp",
+        geography: "2025 年起，洛场村启动数字化保护项目，利用三维扫描、虚拟现实等技术对碉楼群进行数字化存档和展示，让更多人了解侨乡文化。",
+        history: "随着文旅融合发展，洛场村碉楼群重新受到重视。数字化保护项目通过 3D 建模、虚拟漫游等技术，将碉楼文化推向更广泛的受众，实现文化遗产的活态传承。",
+        architecture: "数字化保护采用非接触式测量技术，在不损伤建筑的前提下完成数据采集。同时对濒危建筑进行修复，恢复其历史风貌。"
+    }
+};
+</script>
 
-        const viewPositions = {
-            overhead: { camera: { x: 0, y: 35, z: 0.1 }, target: { x: 0, y: 0, z: 0 } },
-            front: { camera: { x: 0, y: 12, z: 22 }, target: { x: 0, y: 3, z: 0 } },
-            detail: { camera: { x: 8, y: 6, z: 8 }, target: { x: 2, y: 4, z: 2 } }
-        };
+<script>
+/* ══════════════════════════════════════════════════════════════
+   2 · 三维场景
+   注：本块所有 THREE 对象均在函数内创建 —— 内联脚本执行时
+   带 defer 的 three.js 尚未运行，顶层直接 new THREE.X 会报错。
+   ══════════════════════════════════════════════════════════════ */
 
-        const eraTimeline = {
-            qing: { 
-                camera: { x: 15, y: 18, z: 15 }, 
-                target: { x: 0, y: 0, z: 0 },
-                title: "清末建造",
-                period: "1840-1911",
-                image: "assets/timeline_qing.jpg",
-                geography: "洛场村位于花都区花山镇，地处广府文化核心区域。该村始建于清朝乾隆年间，是典型的侨乡村落，村内水道纵横，土地肥沃，为村民出海谋生提供了物质基础。",
-                history: "鸦片战争后，大量广东沿海居民远赴海外谋生。洛场村村民从咸丰年间开始漂洋过海，主要前往美国旧金山、加拿大等地从事餐饮、洗衣等行业。他们将辛苦积攒的财富寄回家乡，开始建造碉楼作为家族荣耀的象征。",
-                architecture: "清末碉楼多为二至三层，采用青砖砌筑，结构坚固。建筑风格以中式为主，融合岭南传统建筑特色，注重防御功能，设有瞭望窗和射击孔。"
-            },
-            republic: { 
-                camera: { x: 18, y: 10, z: 0 }, 
-                target: { x: 0, y: 3, z: 0 },
-                title: "民国鼎盛",
-                period: "1912-1949",
-                image: "assets/timeline_republic.jpg",
-                geography: "民国时期，洛场村成为花都地区重要的侨乡。村内华侨通过海外汇款建造了大量中西合璧的碉楼，形成独特的侨乡风貌。村前池塘环绕，村后青山相依，自然环境优美。",
-                history: "民国时期是洛场村碉楼建造的鼎盛时期。华侨江活钦、江梓桥等人先后回乡建造了鹰扬堂、飞机楼等标志性建筑。这些碉楼不仅是居住场所，更是华侨身份地位的象征，见证了洛场村的辉煌历史。",
-                architecture: "民国碉楼呈现中西合璧风格，采用红砖与青砖交错砌筑，形成独特的斑马纹外墙。建筑装饰华丽，楼顶常有浮雕装饰，如鹰扬堂的雄鹰浮雕，彰显主人的远大志向。"
-            },
-            war: { 
-                camera: { x: 0, y: 15, z: 18 }, 
-                target: { x: 0, y: 0, z: 0 },
-                title: "抗战时期",
-                period: "1937-1945",
-                image: "assets/timeline_war.jpg",
-                geography: "抗日战争时期，洛场村位于东江纵队活动区域。碉楼群在战乱中发挥了重要的防御作用，成为村民躲避战火的安全场所。",
-                history: "抗战爆发后，洛场村华侨积极支援祖国抗日，纷纷捐款捐物。村内碉楼成为抗日据点和避难所，墙体至今仍保留着战争时期的弹痕，见证了那段峥嵘岁月。",
-                architecture: "战时碉楼注重防御功能，墙体加厚，窗户缩小并加装铁栅。部分碉楼设有地道连接，形成完整的防御体系。"
-            },
-            modern: { 
-                camera: { x: -12, y: 8, z: 12 }, 
-                target: { x: 0, y: 2, z: 0 },
-                title: "近代闲置",
-                period: "1949-2000",
-                image: "assets/timeline_modern.jpg",
-                geography: "新中国成立后，洛场村逐渐恢复平静。随着经济发展，村民陆续搬出碉楼，部分建筑因年久失修成为危房。",
-                history: "改革开放后，村民生活水平提高，纷纷在村内新建房屋，传统碉楼逐渐被闲置。由于缺乏维护，部分碉楼出现墙体剥落、屋顶漏水等问题。",
-                architecture: "这一时期碉楼基本保持原貌，但缺乏修缮。部分碉楼被用作仓库或杂物间，建筑价值未被充分认识。"
-            },
-            digital: { 
-                camera: { x: 0, y: 25, z: 0 }, 
-                target: { x: 0, y: 0, z: 0 },
-                title: "数字化保护",
-                period: "2025-至今",
-                image: "assets/timeline_digital.jpg",
-                geography: "2025年起，洛场村启动数字化保护项目，利用三维扫描、虚拟现实等技术对碉楼群进行数字化存档和展示，让更多人了解侨乡文化。",
-                history: "随着文旅融合发展，洛场村碉楼群重新受到重视。数字化保护项目通过3D建模、虚拟漫游等技术，将碉楼文化推向更广泛的受众，实现文化遗产的活态传承。",
-                architecture: "数字化保护采用非接触式测量技术，在不损伤建筑的前提下完成数据采集。同时对濒危建筑进行修复，恢复其历史风貌。"
-            }
-        };
+let scene, camera, renderer, controls, model;
+let hotspots = [];
+let hotspotElements = [];
+let _v3 = null;               // 复用的 Vector3，避免每帧为每个热点新建对象
 
-        function init() {
-            const container = document.getElementById('canvas-container');
-            
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x2B1F1A);
-            
-            camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 1000);
-            camera.position.set(15, 20, 15);
-            
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(window.devicePixelRatio);
-            renderer.shadowMap.enabled = true;
-            container.appendChild(renderer.domElement);
-            
-            controls = new THREE.OrbitControls(camera, renderer.domElement);
-            controls.enabled = true;
-            controls.enableDamping = true;
-            controls.dampingFactor = 0.05;
-            controls.minDistance = 5;
-            controls.maxDistance = 60;
-            controls.target.set(0, 3, 0);
-            controls.enablePan = true;
-            controls.enableRotate = true;
-            controls.enableZoom = true;
-            
-            scene.add(new THREE.AmbientLight(0xF6E9D7, 0.4));
-            
-            const mainLight = new THREE.DirectionalLight(0xE8D5B5, 0.9);
-            mainLight.position.set(15, 25, 15);
-            mainLight.castShadow = true;
-            scene.add(mainLight);
-            
-            const fillLight = new THREE.DirectionalLight(0xC87941, 0.3);
-            fillLight.position.set(-10, 10, -10);
-            scene.add(fillLight);
-            
-            const ground = new THREE.Mesh(
-                new THREE.PlaneGeometry(80, 80),
-                new THREE.MeshLambertMaterial({ color: 0x3D2D26 })
-            );
-            ground.rotation.x = -Math.PI / 2;
-            ground.position.y = -0.1;
-            ground.receiveShadow = true;
-            scene.add(ground);
-            
-            scene.add(new THREE.GridHelper(80, 40, 0x5C4033, 0x3D2D26));
-            
-            loadGLBModel();
-            initCharts();
-            setupEventListeners();
-            animate();
+/* 聚焦模式（逐楼鉴赏）状态 */
+let viewMode = 'overview';    // 'overview' 全村概览 | 'focus' 逐楼聚焦
+let monumentsGroup = null;    // 全村体块容器
+const monumentsById = {};     // 数据键 → 体块 Group
+let focusSphere = null;       // 当前聚焦楼的包围球（相机取景用）
+
+/* 按需渲染：相机静止时不绘制，CPU/GPU 占用接近 0 */
+let needsRender = true;
+let cameraAnimating = false;
+function markDirty() { needsRender = true; }
+
+/* sRGB 色彩管理：GLB 的 PBR 材质按线性空间渲染，
+   渲染器输出 sRGB，同时把本场景的固定色从 sRGB 转到线性，
+   保证原有视觉不变、真实模型贴图颜色正确。 */
+const srgb = (hex) => new THREE.Color(hex).convertSRGBToLinear();
+
+let MAT = null;
+function initMaterials() {
+    MAT = {
+        // 深色实体：让建筑像「未上色的模型」，把视觉重量交给轮廓线
+        body:   new THREE.MeshLambertMaterial({ color: srgb(0x2E2921) }),
+        bodyAlt:new THREE.MeshLambertMaterial({ color: srgb(0x393226) }),
+        trim:   new THREE.MeshLambertMaterial({ color: srgb(0x4C402C) }),
+        ground: new THREE.MeshLambertMaterial({ color: srgb(0x100F0E) }),
+        // 铜色描边：整个场景的视觉主角，呼应「数字测绘」意象
+        edge:    new THREE.LineBasicMaterial({ color: srgb(0xD9BC82), transparent: true, opacity: 0.72 }),
+        edgeSoft:new THREE.LineBasicMaterial({ color: srgb(0xC6A66A), transparent: true, opacity: 0.3 }),
+        halo:   new THREE.MeshBasicMaterial({
+                    color: srgb(0xC6A66A), transparent: true, opacity: 0.2,
+                    side: THREE.DoubleSide, depthWrite: false
+                })
+    };
+}
+
+/* ── 构件辅助函数 ────────────────────────────────────────── */
+
+// 长方体：y 为底面高度，自动加上描边
+function slab(w, h, d, y, matKey) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), MAT[matKey || 'body']);
+    m.position.y = y + h / 2;
+    m.castShadow = true;
+    m.receiveShadow = true;
+    m.add(new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry, 28), MAT.edge));
+    return m;
+}
+function coneGeo(r, h, y, seg, rotY, matKey) {
+    const m = new THREE.Mesh(new THREE.ConeGeometry(r, h, seg || 4), MAT[matKey || 'trim']);
+    m.position.y = y;
+    if (rotY) m.rotation.y = rotY;
+    m.castShadow = true;
+    m.add(new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry, 28), MAT.edge));
+    return m;
+}
+function cylGeo(r1, r2, h, y, matKey) {
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(r1, r2, h, 10), MAT[matKey || 'trim']);
+    m.position.y = y;
+    m.castShadow = true;
+    m.add(new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry, 28), MAT.edge));
+    return m;
+}
+// 建筑底座光环：像测绘台的定位圈
+function haloRing(r) {
+    const m = new THREE.Mesh(new THREE.RingGeometry(r, r + 0.26, 80), MAT.halo);
+    m.rotation.x = -Math.PI / 2;
+    m.position.y = 0.03;
+    return m;
+}
+
+/* ── 五座碉楼的数字化体块（占位模型） ──────────────────── */
+function buildMonuments() {
+    const group = new THREE.Group();
+
+    // 鹰扬堂：三层半，斑马纹外墙（横向铜带），四棱攒尖顶
+    const yingyang = new THREE.Group();
+    yingyang.add(slab(5, 8, 5, 0, 'body'));
+    for (let i = 0; i < 3; i++) yingyang.add(slab(5.16, 0.22, 5.16, 2.1 + i * 2.3, 'trim'));
+    yingyang.add(coneGeo(3.7, 2.5, 9.25, 4, Math.PI / 4, 'trim'));
+    yingyang.add(haloRing(4.3));
+    yingyang.position.set(-8, 0, -5);
+    group.add(yingyang);
+
+    // 飞机楼：机身狭长，两侧对称挑出机翼，平面呈飞机形
+    const feiji = new THREE.Group();
+    feiji.add(slab(3.4, 7, 6.4, 0, 'body'));
+    const wingL = slab(2.7, 0.36, 2.5, 0, 'trim');
+    wingL.position.set(-3.0, 4.4, 0.7);
+    const wingR = slab(2.7, 0.36, 2.5, 0, 'trim');
+    wingR.position.set(3.0, 4.4, 0.7);
+    feiji.add(wingL);
+    feiji.add(wingR);
+    feiji.add(haloRing(4.6));
+    feiji.position.set(5, 0, 3);
+    group.add(feiji);
+
+    // 彰柏家塾：书塾体量 + 檐口 + 前院矮墙
+    const zhangbai = new THREE.Group();
+    zhangbai.add(slab(4, 6, 4, 0, 'body'));
+    zhangbai.add(slab(4.7, 0.34, 4.7, 6.05, 'trim'));
+    // 前院：两段矮墙夹出院门，避免退化成一根与楼体无关的长杆
+    const yardL = slab(1.7, 0.72, 0.24, 0, 'bodyAlt');
+    yardL.position.set(-1.85, 0.36, 2.95);
+    const yardR = slab(1.7, 0.72, 0.24, 0, 'bodyAlt');
+    yardR.position.set(1.85, 0.36, 2.95);
+    zhangbai.add(yardL);
+    zhangbai.add(yardR);
+    zhangbai.add(haloRing(5.2));
+    zhangbai.position.set(-3, 0, 6);
+    group.add(zhangbai);
+
+    // 彰德阁：钟楼 —— 方塔 + 八棱钟室 + 尖顶
+    const zhangde = new THREE.Group();
+    zhangde.add(slab(3.4, 7, 3.4, 0, 'body'));
+    zhangde.add(cylGeo(1.15, 1.5, 2.2, 8.1, 'trim'));
+    zhangde.add(coneGeo(0.4, 1.5, 9.95, 8, 0, 'trim'));
+    zhangde.add(haloRing(3.4));
+    zhangde.position.set(8, 0, -4);
+    group.add(zhangde);
+
+    // 瑞莲楼：最高、最简，平顶挑檐（防御型）
+    const ruilian = new THREE.Group();
+    ruilian.add(slab(4.2, 9, 4.2, 0, 'body'));
+    ruilian.add(slab(5, 0.4, 5, 9.15, 'trim'));
+    ruilian.add(haloRing(4.0));
+    ruilian.position.set(0, 0, -6);
+    group.add(ruilian);
+
+    // 与 diaolouData 键一一对应：聚焦模式复用这些体块，退出时按 home 归位
+    const keyed = [yingyang, feiji, zhangbai, zhangde, ruilian];
+    const ids = Object.keys(diaolouData);
+    keyed.forEach((g, i) => {
+        g.name = ids[i];
+        g.userData.home = g.position.clone();
+        monumentsById[ids[i]] = g;
+    });
+
+    return group;
+}
+
+/* ── 地面：同心圆测绘台 ─────────────────────────────────── */
+function buildGround() {
+    const g = new THREE.Group();
+
+    const plane = new THREE.Mesh(new THREE.PlaneGeometry(260, 260), MAT.ground);
+    plane.rotation.x = -Math.PI / 2;
+    plane.position.y = -0.06;
+    plane.receiveShadow = true;
+    g.add(plane);
+
+    const ringMat = new THREE.LineBasicMaterial({ color: srgb(0xC6A66A), transparent: true, opacity: 0.18 });
+    const rayMat  = new THREE.LineBasicMaterial({ color: srgb(0xC6A66A), transparent: true, opacity: 0.07 });
+
+    [14, 23, 34].forEach((r) => {
+        const pts = [];
+        const N = 144;
+        for (let i = 0; i <= N; i++) {
+            const a = (i / N) * Math.PI * 2;
+            pts.push(new THREE.Vector3(Math.cos(a) * r, 0.02, Math.sin(a) * r));
         }
+        g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), ringMat));
+    });
 
-        window.addEventListener('DOMContentLoaded', () => {
-            document.querySelectorAll('.timeline-item').forEach(item => {
-                item.addEventListener('click', () => {
-                    document.querySelectorAll('.timeline-dot').forEach(d => d.classList.remove('active'));
-                    item.querySelector('.timeline-dot').classList.add('active');
-                    const era = item.dataset.era;
-                    animateCamera(eraTimeline[era].camera, eraTimeline[era].target);
-                    showTimelineDetail(era);
-                });
-            });
+    for (let i = 0; i < 12; i++) {
+        const a = (i / 12) * Math.PI * 2;
+        g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3(Math.cos(a) * 5, 0.02, Math.sin(a) * 5),
+            new THREE.Vector3(Math.cos(a) * 34, 0.02, Math.sin(a) * 34)
+        ]), rayMat));
+    }
+    return g;
+}
+
+/* ── 初始化 ─────────────────────────────────────────────── */
+function init() {
+    const container = document.getElementById('stage');
+    if (!container || typeof THREE === 'undefined') { failBoot(); return; }
+
+    initMaterials();
+    _v3 = new THREE.Vector3();
+
+    scene = new THREE.Scene();
+    scene.background = srgb(0x0A0908);
+    // 指数雾：远处自然地隐入背景，营造展陈空间的纵深
+    scene.fog = new THREE.FogExp2(srgb(0x0A0908).getHex(), 0.0112);
+
+    camera = new THREE.PerspectiveCamera(52, window.innerWidth / window.innerHeight, 0.1, 400);
+    camera.position.set(23, 15.5, 23);
+
+    renderer = new THREE.WebGLRenderer({
+        // 场景以铜色描边线为主要视觉语言，线条抗锯齿必须开启
+        antialias: true,
+        powerPreference: 'high-performance'
+    });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    // sRGB 输出：真实 GLB 模型的 PBR 材质按规范渲染
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    // 限制像素比：3x 屏按 1:1 渲染会产生 9 倍像素量，是移动端掉帧主因
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    container.appendChild(renderer.domElement);
+
+    controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.055;
+    controls.minDistance = 7;
+    controls.maxDistance = 78;
+    controls.maxPolarAngle = Math.PI * 0.495;   // 禁止转到地平线以下
+    controls.target.set(0, 4, 0);
+    controls.update();
+    // 阻尼衰减期间持续派发 change，配合按需渲染即可自动续帧
+    controls.addEventListener('change', markDirty);
+
+    // 灯光
+    scene.add(new THREE.AmbientLight(srgb(0xF2E4CE), 0.6));
+
+    const key = new THREE.DirectionalLight(srgb(0xFFEED2), 1.2);
+    key.position.set(18, 30, 16);
+    key.castShadow = true;
+    key.shadow.mapSize.set(1024, 1024);
+    key.shadow.camera.left = -32;
+    key.shadow.camera.right = 32;
+    key.shadow.camera.top = 32;
+    key.shadow.camera.bottom = -32;
+    key.shadow.camera.near = 1;
+    key.shadow.camera.far = 95;
+    key.shadow.bias = -0.0016;
+    scene.add(key);
+
+    const rim = new THREE.DirectionalLight(srgb(0xC6A66A), 0.52);
+    rim.position.set(-14, 11, -15);
+    scene.add(rim);
+
+    scene.add(buildGround());
+    mountMonuments();
+
+    setupUI();
+    animate();
+
+    // 开场：从远景缓缓推进到初始机位
+    const home = { x: 23, y: 15.5, z: 23 };
+    camera.position.set(44, 29, 44);
+    animateCamera(home, { x: 0, y: 4, z: 0 }, 1900);
+}
+
+/* ── 模型加载 ───────────────────────────────────────────── */
+let gltfLoaderPromise = null;
+function ensureGLTFLoader() {
+    if (window.THREE && THREE.GLTFLoader) return Promise.resolve();
+    if (!gltfLoaderPromise) {
+        gltfLoaderPromise = new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src = 'vendor/GLTFLoader.js';
+            s.onload = resolve;
+            s.onerror = reject;
+            document.head.appendChild(s);
         });
+    }
+    return gltfLoaderPromise;
+}
 
-        function loadGLBModel() {
+/* Meshopt 解码器：模型几何经 EXT_meshopt_compression 压缩，需先注册解码器。
+   解码器仅 25KB，与 GLTFLoader 一并按需加载；缺失时模型加载失败会回退体块。 */
+let meshoptPromise = null;
+function ensureMeshoptDecoder() {
+    if (window.MeshoptDecoder) return Promise.resolve(window.MeshoptDecoder);
+    if (!meshoptPromise) {
+        meshoptPromise = new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src = 'vendor/meshopt_decoder.js';
+            s.onload = () => resolve(window.MeshoptDecoder);
+            s.onerror = reject;
+            document.head.appendChild(s);
+        });
+    }
+    return meshoptPromise;
+}
+
+/* ── 真实模型加载（按楼登记，后台预载，失败静默回退体块） ── */
+const gltfCache = {};   // key → { state: 'loading'|'ready'|'failed', focusObj, overviewObj }
+
+function loadBuildingModels() {
+    Object.keys(BUILDING_MODELS).forEach((key) => {
+        if (gltfCache[key]) return;
+        const cfg = BUILDING_MODELS[key];
+        gltfCache[key] = { state: 'loading' };
+        Promise.all([ensureGLTFLoader(), ensureMeshoptDecoder()]).then(([, decoder]) => {
             const loader = new THREE.GLTFLoader();
-            loader.load('models/luochang.glb',
+            if (decoder) loader.setMeshoptDecoder(decoder);
+            loader.load(cfg.url,
                 (gltf) => {
-                    model = gltf.scene;
-                    model.position.y = 0;
-                    scene.add(model);
-                    model.traverse((child) => {
-                        if (child.isMesh) { child.castShadow = true; child.receiveShadow = true; }
+                    const root = gltf.scene;
+                    const maxAniso = renderer.capabilities.getMaxAnisotropy();
+                    root.traverse((c) => {
+                        if (c.isMesh) {
+                            c.castShadow = true;
+                            c.receiveShadow = true;
+                            if (c.material && c.material.map) c.material.map.anisotropy = maxAniso;
+                        }
                     });
-                    initHotspots();
+                    const entry = gltfCache[key];
+                    entry.state = 'ready';
+                    entry.focusObj = makeFocusInstance(root);
+                    entry.overviewObj = makeOverviewInstance(key, root, cfg);
+                    markDirty();
+                    // 概览：真模型替换该楼的占位体块
+                    if (viewMode === 'overview') {
+                        const ph = monumentsById[key];
+                        if (ph) ph.visible = false;
+                        entry.overviewObj.visible = true;
+                    }
+                    // 聚焦模式下恰好选中这座楼：立即换成真模型并重新取景
+                    if (viewMode === 'focus' && window.refreshFocus) window.refreshFocus();
                 },
-                null,
-                () => createPlaceholderModel()
+                (evt) => {
+                    // 载入进度显示在切换器副标题上
+                    if (evt && evt.total && window.updateScProgress) {
+                        window.updateScProgress(key, Math.round((evt.loaded / evt.total) * 100));
+                    }
+                },
+                () => { gltfCache[key].state = 'failed'; }
             );
+        }).catch(() => { gltfCache[key].state = 'failed'; });
+    });
+}
+
+// 聚焦实例：贴地（基底 y=0）、XZ 几何中心对齐原点，真实尺度
+function makeFocusInstance(src) {
+    const obj = src.clone(true);
+    const box = new THREE.Box3().setFromObject(obj);
+    const c = box.getCenter(new THREE.Vector3());
+    obj.position.set(-c.x, -box.min.y, -c.z);
+    const holder = new THREE.Group();
+    holder.add(obj);
+    holder.visible = false;
+    scene.add(holder);
+    return holder;
+}
+
+// 概览实例：归一后缩放到与体块群相称的尺寸，放回原占位位置
+function makeOverviewInstance(key, src, cfg) {
+    const obj = src.clone(true);
+    const box = new THREE.Box3().setFromObject(obj);
+    const c = box.getCenter(new THREE.Vector3());
+    obj.position.set(-c.x, -box.min.y, -c.z);
+    const holder = new THREE.Group();
+    holder.add(obj);
+    holder.scale.setScalar(cfg.overviewScale || 1);
+    holder.rotation.y = cfg.rotY || 0;
+    const ph = monumentsById[key];
+    if (ph && ph.userData.home) holder.position.copy(ph.userData.home);
+    holder.visible = false;
+    monumentsGroup.add(holder);
+    return holder;
+}
+
+// 尚无真实模型时挂载「数字体块」：深色实体 + 铜色轮廓 + 底座光环
+function mountMonuments() {
+    model = buildMonuments();
+    monumentsGroup = model;
+    scene.add(model);
+    initHotspots();
+    markDirty();
+    setTimeout(hideBoot, 260);
+    loadBuildingModels();
+}
+
+/* ── 聚焦模式（逐楼鉴赏）场景切换 ───────────────────────── */
+function applyFocusVisual(key) {
+    // 收起所有聚焦实例与全村体块
+    Object.keys(gltfCache).forEach((k) => {
+        const e = gltfCache[k];
+        if (e.focusObj) e.focusObj.visible = false;
+    });
+    monumentsGroup.children.forEach((ch) => { ch.visible = false; });
+
+    const entry = gltfCache[key];
+    if (entry && entry.state === 'ready') {
+        entry.focusObj.visible = true;
+    } else {
+        // 真模型未就绪/失败：以占位体块居中顶替
+        const m = monumentsById[key];
+        if (m) { m.visible = true; m.position.set(0, 0, 0); }
+    }
+    markDirty();
+}
+
+function exitFocusVisual() {
+    Object.keys(gltfCache).forEach((k) => {
+        const e = gltfCache[k];
+        if (e.focusObj) e.focusObj.visible = false;
+    });
+    monumentsGroup.children.forEach((ch) => { ch.visible = true; });
+    // 已有真模型的楼，概览中继续隐藏其占位体块
+    Object.keys(gltfCache).forEach((k) => {
+        if (gltfCache[k].state === 'ready') {
+            const ph = monumentsById[k];
+            if (ph) ph.visible = false;
         }
+    });
+    // 体块归位
+    Object.keys(monumentsById).forEach((k) => {
+        const m = monumentsById[k];
+        if (m && m.userData.home) m.position.copy(m.userData.home);
+    });
+    markDirty();
+}
 
-        function createPlaceholderModel() {
-            const group = new THREE.Group();
-            const baseMat = new THREE.MeshLambertMaterial({ color: 0x8B6E55 });
-            const accentMat = new THREE.MeshLambertMaterial({ color: 0xC87941 });
-            const roofMat = new THREE.MeshLambertMaterial({ color: 0x5C4033 });
+// 由当前聚焦对象计算包围球（相机取景依据）
+function computeFocusSphere() {
+    let obj = null;
+    Object.keys(gltfCache).some((k) => {
+        const e = gltfCache[k];
+        if (e.state === 'ready' && e.focusObj && e.focusObj.visible) { obj = e.focusObj; return true; }
+        return false;
+    });
+    if (!obj) {
+        const vis = monumentsGroup ? monumentsGroup.children.find((c) => c.visible) : null;
+        obj = vis || null;
+    }
+    if (!obj) { focusSphere = null; return; }
+    const box = new THREE.Box3().setFromObject(obj);
+    if (box.isEmpty()) { focusSphere = null; return; }
+    focusSphere = box.getBoundingSphere(new THREE.Sphere());
+}
 
-            const yingyangtang = new THREE.Group();
-            yingyangtang.add(new THREE.Mesh(new THREE.BoxGeometry(5, 8, 5), baseMat));
-            yingyangtang.children[0].position.y = 4;
-            const yroof = new THREE.Mesh(new THREE.ConeGeometry(2.5, 2.5, 4), roofMat);
-            yroof.position.y = 9.3;
-            yroof.rotation.y = Math.PI / 4;
-            yingyangtang.add(yroof);
-            yingyangtang.position.set(-8, 0, -5);
-            group.add(yingyangtang);
+// 依据包围球与视口宽高比求取景距离（窄屏按水平 FOV 收缩）
+function frameDistance(r) {
+    const vHalf = THREE.MathUtils.degToRad(camera.fov) / 2;
+    const hHalf = Math.atan(Math.tan(vHalf) * camera.aspect);
+    return (r / Math.tan(Math.min(vHalf, hHalf))) * 1.14;
+}
 
-            const feijilou = new THREE.Group();
-            feijilou.add(new THREE.Mesh(new THREE.BoxGeometry(6, 7, 3), baseMat));
-            feijilou.children[0].position.y = 3.5;
-            const fwing = new THREE.Mesh(new THREE.BoxGeometry(2, 0.3, 8), accentMat);
-            fwing.position.set(0, 7.2, 0);
-            feijilou.add(fwing);
-            feijilou.position.set(5, 0, 3);
-            group.add(feijilou);
+/* ── 首屏 ───────────────────────────────────────────────── */
+let bootHidden = false;
+function hideBoot() {
+    if (bootHidden) return;
+    bootHidden = true;
+    const el = document.getElementById('boot');
+    if (!el) return;
+    el.classList.add('is-off');
+    setTimeout(() => { el.style.display = 'none'; }, 820);
+}
 
-            const zhangbai = new THREE.Group();
-            zhangbai.add(new THREE.Mesh(new THREE.BoxGeometry(4, 6, 4), baseMat));
-            zhangbai.children[0].position.y = 3;
-            zhangbai.add(new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.5, 1.5), roofMat));
-            zhangbai.children[1].position.y = 6.8;
-            zhangbai.position.set(-3, 0, 6);
-            group.add(zhangbai);
+// three.js 缺失或 WebGL 不可用时的兜底，避免首屏永久卡住
+function failBoot() {
+    const t = document.getElementById('bootText');
+    if (t) t.textContent = '三维场景未能启动，文字资料仍可浏览';
+    const mark = document.querySelector('.boot-mark');
+    if (mark) mark.style.display = 'none';
+    setTimeout(hideBoot, 1400);
+}
 
-            const zhangdege = new THREE.Group();
-            zhangdege.add(new THREE.Mesh(new THREE.BoxGeometry(3, 7, 3), baseMat));
-            zhangdege.children[0].position.y = 3.5;
-            zhangdege.add(new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.2, 2, 8), roofMat));
-            zhangdege.children[1].position.y = 7.5;
-            zhangdege.position.set(8, 0, -4);
-            group.add(zhangdege);
+/* ── 热点 ───────────────────────────────────────────────── */
+function initHotspots() {
+    if (hotspotElements.length) return;
+    hotspots = Object.values(diaolouData);
+    const container = document.getElementById('hotspotLayer');
 
-            const ruilianlou = new THREE.Group();
-            ruilianlou.add(new THREE.Mesh(new THREE.BoxGeometry(4, 9, 4), baseMat));
-            ruilianlou.children[0].position.y = 4.5;
-            ruilianlou.add(new THREE.Mesh(new THREE.BoxGeometry(3, 0.5, 3), accentMat));
-            ruilianlou.children[1].position.y = 9.3;
-            ruilianlou.position.set(0, 0, -6);
-            group.add(ruilianlou);
+    hotspots.forEach((item, index) => {
+        // 用 button 而非 div：天然可聚焦、可回车触发，键盘用户可达
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'hotspot';
+        btn.dataset.index = index;
+        btn.setAttribute('aria-label', '查看 ' + item.name);
+        btn.innerHTML = '<span class="hs-dot" aria-hidden="true"></span><span class="hs-label"></span>';
+        btn.querySelector('.hs-label').textContent = item.short || item.name;
+        btn.addEventListener('click', () => { dismissHint(); openDetail('diaolou', item); });
+        container.appendChild(btn);
+        hotspotElements.push(btn);
+    });
+}
 
-            model = group;
-            scene.add(model);
-            initHotspots();
+function updateHotspotPositions() {
+    if (!camera || !_v3) return;
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+
+    for (let i = 0; i < hotspotElements.length; i++) {
+        const el = hotspotElements[i];
+        const p = hotspots[i].position;
+        _v3.set(p.x, p.y, p.z).project(camera);
+
+        const visible = _v3.z < 1;
+        el.style.display = visible ? 'flex' : 'none';
+        if (!visible) continue;
+
+        el.style.left = (_v3.x * 0.5 + 0.5) * w + 'px';
+        el.style.top  = (-_v3.y * 0.5 + 0.5) * h + 'px';
+    }
+}
+
+/* ── 相机动画 ───────────────────────────────────────────── */
+function animateCamera(targetCamera, targetLookAt, duration) {
+    if (!camera || !controls) return;
+    const dur = duration || 1250;
+    const fromCam = { x: camera.position.x, y: camera.position.y, z: camera.position.z };
+    const fromTgt = { x: controls.target.x, y: controls.target.y, z: controls.target.z };
+    const t0 = performance.now();
+    cameraAnimating = true;
+
+    function step() {
+        const p = Math.min((performance.now() - t0) / dur, 1);
+        const e = 1 - Math.pow(1 - p, 3);   // easeOutCubic
+
+        camera.position.x = fromCam.x + (targetCamera.x - fromCam.x) * e;
+        camera.position.y = fromCam.y + (targetCamera.y - fromCam.y) * e;
+        camera.position.z = fromCam.z + (targetCamera.z - fromCam.z) * e;
+
+        controls.target.x = fromTgt.x + (targetLookAt.x - fromTgt.x) * e;
+        controls.target.y = fromTgt.y + (targetLookAt.y - fromTgt.y) * e;
+        controls.target.z = fromTgt.z + (targetLookAt.z - fromTgt.z) * e;
+
+        if (p < 1) requestAnimationFrame(step);
+        else cameraAnimating = false;
+    }
+    step();
+}
+
+/* ── 渲染循环 ───────────────────────────────────────────── */
+function animate() {
+    requestAnimationFrame(animate);
+    if (document.hidden) return;          // 后台标签页直接跳过
+    controls.update();
+    if (!needsRender && !cameraAnimating) return;
+    updateHotspotPositions();
+    renderer.render(scene, camera);
+    if (!cameraAnimating) needsRender = false;
+}
+
+/* ── 视口变化 ───────────────────────────────────────────── */
+let resizeTimer = null;
+function handleResize() {
+    if (!camera || !renderer) return;
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    markDirty();
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(markDirty, 140);
+}
+</script>
+
+<script>
+/* ══════════════════════════════════════════════════════════════
+   3 · 界面交互
+   单一抽屉承载全部内容：数据档案（Tab 首页）⇄ 详情（二级视图）
+   ══════════════════════════════════════════════════════════════ */
+
+const $ = (id) => document.getElementById(id);
+
+const drawer      = $('drawer');
+const scrim       = $('scrim');
+const drawerTabs  = $('drawerTabs');
+const drawerBack  = $('drawerBack');
+const drawerTitle = $('drawerTitle');
+const drawerSub   = $('drawerSub');
+const drawerBody  = $('drawerBody');
+
+// 详情是动态内容，容器在此处挂载
+const detailView = document.createElement('section');
+detailView.className = 'view';
+detailView.dataset.view = 'detail';
+drawerBody.appendChild(detailView);
+
+const NODE_TYPE_LABEL = { person: '人物', object: '物件', place: '地点' };
+
+let drawerIsOpen = false;
+let detailEntry  = null;
+let activeTab    = 'overview';
+let gallery      = { images: [], index: 0 };
+
+/* ── 逐楼鉴赏（聚焦模式） ───────────────────────────────── */
+const scOrder = Object.keys(diaolouData);   // 展示顺序与数据表一致
+let focusKey = null;
+let activeView = 'detail';                  // 当前视角芯片（俯瞰/正视/细节）
+
+const showcase = $('showcase');
+
+function updateScProgress(key, pct) {
+    if (viewMode === 'focus' && focusKey === key) {
+        $('scSub').textContent = '真实模型载入中 ' + pct + '%';
+    }
+}
+
+// 真模型异步就绪后：若正聚焦该楼，立即换模型并重新取景
+function refreshFocus() {
+    if (viewMode !== 'focus' || !focusKey) return;
+    applyFocusVisual(focusKey);
+    computeFocusSphere();
+    const v = getViewPositions()[activeView];
+    if (v) animateCamera(v.camera, v.target, 900);
+    syncFocusDistances();
+    const d = diaolouData[focusKey];
+    if (gltfCache[focusKey] && gltfCache[focusKey].state === 'ready') {
+        $('scSub').textContent = (d.era || '') + ' · 实景三维模型';
+    }
+}
+
+function syncFocusDistances() {
+    if (viewMode === 'focus' && focusSphere) {
+        const r = focusSphere.radius;
+        controls.minDistance = Math.max(r * 0.32, 2.5);
+        controls.maxDistance = Math.max(r * 4.5, 70);
+    } else {
+        controls.minDistance = 7;
+        controls.maxDistance = 78;
+    }
+}
+
+// 视角芯片取景：聚焦模式按当前楼包围球动态计算，概览沿用固定机位
+function getViewPositions() {
+    if (viewMode !== 'focus' || !focusSphere) return viewPositions;
+    const c = focusSphere.center;
+    const r = Math.max(focusSphere.radius, 2);
+    const d = frameDistance(r) * 1.04;
+    return {
+        overhead: {
+            camera: { x: c.x + d * 0.06, y: c.y + d * 1.10, z: c.z + d * 0.28 },
+            target: { x: c.x, y: c.y - r * 0.2, z: c.z }
+        },
+        front: {
+            camera: { x: c.x, y: c.y + r * 0.12, z: c.z - d },
+            target: { x: c.x, y: c.y, z: c.z }
+        },
+        detail: {
+            camera: { x: c.x + d * 0.4879, y: c.y + d * 0.3584, z: c.z - d * 0.7959 },
+            target: { x: c.x, y: c.y - r * 0.05, z: c.z }
         }
+    };
+}
 
-        function showTimelineDetail(era) {
-            const data = eraTimeline[era];
-            document.getElementById('timelineTitle').textContent = data.title;
-            document.getElementById('timelinePeriod').textContent = data.period;
-            document.getElementById('timelineGeography').textContent = data.geography;
-            document.getElementById('timelineHistory').textContent = data.history;
-            document.getElementById('timelineArchitecture').textContent = data.architecture;
-            
-            const container = document.getElementById('timelineImage');
-            const img = new Image();
-            img.onload = () => {
-                container.innerHTML = '';
-                container.appendChild(img);
-            };
-            img.onerror = () => {
-                container.innerHTML = `<div class="timeline-image-placeholder">${data.title}</div>`;
-            };
-            img.src = data.image;
-            
-            document.getElementById('timelineModal').style.display = 'flex';
-        }
+function focusOn(key) {
+    focusKey = key;
+    const d = diaolouData[key];
+    const entry = gltfCache[key];
+    const tag = entry && entry.state === 'ready' ? '实景三维模型'
+              : entry && entry.state === 'loading' ? '真实模型载入中…'
+              : '数字体块 · 精细模型整理中';
+    $('scName').textContent = d.short || d.name;
+    $('scSub').textContent = (d.era || '') + ' · ' + tag;
+    $('scCount').textContent = (scOrder.indexOf(key) + 1) + ' / ' + scOrder.length;
 
-        function initHotspots() {
-            hotspots = Object.values(diaolouData);
-            const container = document.getElementById('hotspotContainer');
-            hotspots.forEach((hotspot, index) => {
-                const dot = document.createElement('div');
-                dot.className = 'hotspot';
-                dot.dataset.index = index;
-                dot.addEventListener('click', () => showHotspotInfo(index));
-                container.appendChild(dot);
-                hotspotElements.push(dot);
-            });
-        }
+    applyFocusVisual(key);
+    computeFocusSphere();
+    syncFocusDistances();
+    const v = getViewPositions()[activeView];
+    if (v) animateCamera(v.camera, v.target, 1050);
+}
 
-        function updateHotspotPositions() {
-            if (!camera) return;
-            hotspotElements.forEach((dot, index) => {
-                const pos = new THREE.Vector3(
-                    hotspots[index].position.x,
-                    hotspots[index].position.y,
-                    hotspots[index].position.z
-                ).project(camera);
-                
-                const x = (pos.x * 0.5 + 0.5) * window.innerWidth;
-                const y = (-pos.y * 0.5 + 0.5) * window.innerHeight;
-                
-                dot.style.left = x + 'px';
-                dot.style.top = y + 'px';
-                dot.style.display = pos.z < 1 ? 'block' : 'none';
-            });
-        }
+function stepFocus(dir) {
+    return () => {
+        if (viewMode !== 'focus' || focusKey === null) return;
+        const i = scOrder.indexOf(focusKey);
+        focusOn(scOrder[(i + dir + scOrder.length) % scOrder.length]);
+    };
+}
 
-        let currentImages = [];
-        let currentImageIndex = 0;
+function enterFocus(key) {
+    if (viewMode === 'focus') { focusOn(key); return; }
+    viewMode = 'focus';
+    document.body.classList.add('mode-focus');
+    showcase.hidden = false;
+    $('btnFocus').classList.add('is-on');
+    $('btnFocus').setAttribute('aria-pressed', 'true');
+    $('btnFocusLabel').textContent = '返回全景';
+    scene.fog.density = 0.0085;   // 聚焦单楼时减弱雾，让近景更通透
+    focusOn(key || 'feijilou');
+    dismissHint();
+}
 
-        function showHotspotInfo(index) {
-            const data = hotspots[index];
-            document.getElementById('modalTitle').textContent = data.name;
-            document.getElementById('modalEra').textContent = data.era;
-            document.getElementById('modalFeatures').textContent = data.features;
-            document.getElementById('modalStory').textContent = data.story;
-            
-            currentImages = data.images || [data.image];
-            currentImageIndex = 0;
-            
-            updateModalImage();
-            document.getElementById('infoModal').style.display = 'flex';
-        }
+function exitFocus() {
+    if (viewMode !== 'focus') return;
+    viewMode = 'overview';
+    focusKey = null;
+    focusSphere = null;
+    document.body.classList.remove('mode-focus');
+    showcase.hidden = true;
+    $('btnFocus').classList.remove('is-on');
+    $('btnFocus').setAttribute('aria-pressed', 'false');
+    $('btnFocusLabel').textContent = '逐楼鉴赏';
+    scene.fog.density = 0.0112;
+    exitFocusVisual();
+    syncFocusDistances();
+    animateCamera({ x: 23, y: 15.5, z: 23 }, { x: 0, y: 4, z: 0 }, 1100);
+}
 
-        function updateModalImage() {
-            const img = document.getElementById('modalImage');
-            const container = document.getElementById('imageContainer');
-            const indicator = document.getElementById('imageIndicator');
-            const spinner = document.getElementById('loadingSpinner');
-            
-            if (currentImages.length > 1) {
-                document.getElementById('prevImage').style.display = 'flex';
-                document.getElementById('nextImage').style.display = 'flex';
-                
-                indicator.innerHTML = currentImages.map((_, i) => 
-                    `<span class="w-2 h-2 rounded-full ${i === currentImageIndex ? 'bg-[#C87941]' : 'bg-[#8B6E55]'}"></span>`
-                ).join('');
-            } else {
-                document.getElementById('prevImage').style.display = 'none';
-                document.getElementById('nextImage').style.display = 'none';
-                indicator.innerHTML = '';
+/* ── 视图切换 ───────────────────────────────────────────── */
+function showView(name) {
+    drawerBody.querySelectorAll('.view').forEach((v) => {
+        v.classList.toggle('is-on', v.dataset.view === name);
+    });
+}
+
+function openDrawer() {
+    if (drawerIsOpen) return;
+    drawerIsOpen = true;
+    drawer.classList.add('is-open');
+    drawer.setAttribute('aria-hidden', 'false');
+    // 窄屏抽屉占满整屏，需要遮罩把三维场景压暗
+    if (window.innerWidth <= 900) scrim.classList.add('is-on');
+}
+
+function closeDrawer() {
+    if (!drawerIsOpen) return;
+    drawerIsOpen = false;
+    drawer.classList.remove('is-open');
+    drawer.setAttribute('aria-hidden', 'true');
+    scrim.classList.remove('is-on');
+
+    // 收起时回到档案首页，下次打开不会停在某个详情里
+    detailEntry = null;
+    drawerTabs.hidden = false;
+    drawerBack.hidden = true;
+    drawerTitle.textContent = '数据档案';
+    drawerSub.textContent = '洛场村碉楼群 · 数字化档案';
+    drawerTabs.querySelectorAll('.tab').forEach((t) => t.classList.toggle('is-on', t.dataset.tab === activeTab));
+    showView(activeTab);
+}
+
+function selectTab(tab) {
+    activeTab = tab;
+    detailEntry = null;
+    drawerTabs.hidden = false;
+    drawerBack.hidden = true;
+    drawerTitle.textContent = '数据档案';
+    drawerSub.textContent = '洛场村碉楼群 · 数字化档案';
+
+    drawerTabs.querySelectorAll('.tab').forEach((t) => {
+        const on = t.dataset.tab === tab;
+        t.classList.toggle('is-on', on);
+        t.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+
+    showView(tab);
+    drawerBody.scrollTop = 0;
+    openDrawer();
+}
+
+function openDetail(kind, payload) {
+    if (!payload) return;
+    detailEntry = { kind: kind, payload: payload };
+    drawerTabs.hidden = true;
+    drawerBack.hidden = false;
+    showView('detail');
+    renderDetail();
+    drawerBody.scrollTop = 0;
+    openDrawer();
+}
+
+function goBack() {
+    if (!detailEntry) { closeDrawer(); return; }
+    selectTab(activeTab);
+}
+
+function renderDetail() {
+    if (!detailEntry) return;
+    const k = detailEntry.kind;
+    if (k === 'diaolou')     renderDiaolou(detailEntry.payload);
+    else if (k === 'era')    renderEra(detailEntry.payload);
+    else if (k === 'qiaopi') renderQiaopi(detailEntry.payload);
+    else if (k === 'node')   renderNode(detailEntry.payload);
+}
+
+/* ── 详情①：碉楼（多图轮播） ────────────────────────────── */
+function renderDiaolou(d) {
+    drawerTitle.textContent = d.short || d.name;
+    drawerSub.textContent = d.era;
+
+    gallery = { images: (d.images || []).slice(), index: 0 };
+
+    detailView.innerHTML =
+        '<div class="detail-cover" id="cover"></div>' +
+        (gallery.images.length > 1 ? '<div class="thumbs" id="thumbs"></div>' : '') +
+        '<div class="sec"><h4>建筑特色</h4><p></p></div>' +
+        '<div class="sec"><h4>历史意义</h4><p></p></div>';
+
+    const ps = detailView.querySelectorAll('.sec p');
+    ps[0].textContent = d.features;
+    ps[1].textContent = d.story;
+
+    if (gallery.images.length > 1) buildThumbs();
+    showGalleryImage(0);
+}
+
+function buildThumbs() {
+    const box = document.getElementById('thumbs');
+    if (!box) return;
+    box.innerHTML = '';
+    gallery.images.forEach((src, i) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.setAttribute('aria-label', '第 ' + (i + 1) + ' 张影像');
+        b.innerHTML = '<img alt="" decoding="async">';
+        b.querySelector('img').src = src;
+        b.addEventListener('click', () => showGalleryImage(i));
+        box.appendChild(b);
+    });
+}
+
+function showGalleryImage(i) {
+    const cover = document.getElementById('cover');
+    if (!cover || !gallery.images.length) return;
+
+    gallery.index = i;
+
+    const multi = gallery.images.length > 1;
+    cover.innerHTML = '<img alt="" decoding="async">' + (multi
+        ? '<button class="detail-nav prev" type="button" aria-label="上一张">‹</button>' +
+          '<button class="detail-nav next" type="button" aria-label="下一张">›</button>'
+        : '');
+
+    const img = cover.querySelector('img');
+    img.addEventListener('error', () => {
+        // 影像缺失时给出版式化占位，而不是破图
+        cover.innerHTML = '<div class="ph">影像资料整理中</div>';
+    });
+    img.src = gallery.images[i];
+
+    if (multi) {
+        const n = gallery.images.length;
+        cover.querySelector('.prev').addEventListener('click',
+            () => showGalleryImage((gallery.index - 1 + n) % n));
+        cover.querySelector('.next').addEventListener('click',
+            () => showGalleryImage((gallery.index + 1) % n));
+    }
+
+    document.querySelectorAll('#thumbs button').forEach((b, k) => {
+        b.classList.toggle('is-on', k === gallery.index);
+    });
+}
+
+/* ── 详情②：历史阶段 ───────────────────────────────────── */
+function renderEra(d) {
+    drawerTitle.textContent = d.title;
+    drawerSub.textContent = d.period;
+
+    detailView.innerHTML =
+        '<div class="detail-cover" id="cover"></div>' +
+        '<div class="sec"><h4>地理人文</h4><p></p></div>' +
+        '<div class="sec"><h4>历史背景</h4><p></p></div>' +
+        '<div class="sec"><h4>建筑特点</h4><p></p></div>';
+
+    const ps = detailView.querySelectorAll('.sec p');
+    ps[0].textContent = d.geography;
+    ps[1].textContent = d.history;
+    ps[2].textContent = d.architecture;
+
+    const cover = document.getElementById('cover');
+    const img = document.createElement('img');
+    img.alt = d.title + ' 时期历史影像';
+    img.decoding = 'async';
+    img.addEventListener('error', () => {
+        cover.innerHTML = '<div class="ph">' + d.title + ' · 影像资料整理中</div>';
+    });
+    img.src = d.image;
+    cover.appendChild(img);
+}
+
+/* ── 详情③：侨批 ────────────────────────────────────────── */
+function renderQiaopi(d) {
+    drawerTitle.textContent = d.title;
+    drawerSub.textContent = d.era;
+
+    detailView.innerHTML =
+        '<div class="qp-stamp" aria-hidden="true">' + (d.seal || '批') + '</div>' +
+        '<div class="letter" id="qpLetter"></div>' +
+        '<div class="sec"><h4>历史背景</h4><p></p></div>' +
+        '<div class="detail-cover" id="cover" style="margin-top:20px;min-height:150px"></div>';
+
+    document.getElementById('qpLetter').textContent = d.content;
+    detailView.querySelector('.sec p').textContent = d.story;
+
+    const cover = document.getElementById('cover');
+    if (!d.image) { cover.innerHTML = '<div class="ph">原件影像整理中 · 以上为释文</div>'; return; }
+
+    const img = document.createElement('img');
+    img.alt = d.title + ' 原件影像';
+    img.decoding = 'async';
+    img.addEventListener('error', () => {
+        cover.innerHTML = '<div class="ph">原件影像整理中 · 以上为释文</div>';
+    });
+    img.src = d.image;
+    cover.appendChild(img);
+}
+
+/* ── 详情④：关系网络节点 ───────────────────────────────── */
+function renderNode(d) {
+    drawerTitle.textContent = d.name;
+    drawerSub.textContent = (d.typeLabel ? d.typeLabel + ' · ' : '') + d.title;
+
+    const isImage = /\.(webp|jpe?g|png)$/i.test(d.image || '');
+
+    detailView.innerHTML = (isImage
+        ? '<div class="detail-cover" id="cover"></div>'
+        : '<div class="card emoji-plate" aria-hidden="true">' + d.image + '</div>') +
+        '<div class="sec"><h4>档案说明</h4><p></p></div>';
+
+    detailView.querySelector('.sec p').textContent = d.desc;
+
+    if (!isImage) return;
+    const cover = document.getElementById('cover');
+    const img = document.createElement('img');
+    img.alt = d.name;
+    img.decoding = 'async';
+    img.addEventListener('error', () => { cover.innerHTML = '<div class="ph">影像资料整理中</div>'; });
+    img.src = d.image;
+    cover.appendChild(img);
+}
+
+function openNode(type, id) {
+    const list = networkNodeData[type];
+    if (!list) return;
+    const item = list.find((x) => x.id === id) || list[id];
+    if (!item) return;
+    openDetail('node', Object.assign({}, item, { typeLabel: NODE_TYPE_LABEL[type] || '' }));
+}
+
+/* ── 操作提示 ───────────────────────────────────────────── */
+let hintDismissed = false;
+function dismissHint() {
+    if (hintDismissed) return;
+    hintDismissed = true;
+    const h = $('hint');
+    if (h) h.classList.add('is-off');
+}
+
+/* ── 事件绑定 ───────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════
+   词云：侨乡文化标签 / 侨批高频词
+   零依赖自绘 —— 阿基米德螺线布局 + 轴对齐矩形碰撞检测，
+   词频映射字号与铜色明度。纯 CJK 词宽按 1em/字 估算，
+   不依赖字体加载完成，避免首屏 reflow。
+   ══════════════════════════════════════════════════════════════ */
+const TAG_CLOUD = [
+    { t: '华侨文化', w: 10 }, { t: '碉楼',     w: 9 },
+    { t: '中西合璧', w: 9 },  { t: '碉楼集群', w: 8 },
+    { t: '建筑遗产', w: 8 },  { t: '防御建筑', w: 7 },
+    { t: '文化交融', w: 7 },  { t: '侨乡风情', w: 7 },
+    { t: '移民历史', w: 6 },  { t: '乡土建筑', w: 6 },
+    { t: '近代建筑', w: 6 },  { t: '侨批',     w: 6 },
+    { t: '洛场村',   w: 5 },  { t: '家塾',     w: 4 },
+    { t: '返乡',     w: 4 },  { t: '乡愁',     w: 4 },
+    { t: '花都',     w: 3 },  { t: '汇款',     w: 3 }
+];
+
+const QIAOPI_CLOUD = [
+    { t: '平安', w: 9 }, { t: '思念', w: 8 }, { t: '汇款', w: 8 },
+    { t: '亲人', w: 7 }, { t: '家',   w: 7 }, { t: '回乡', w: 6 },
+    { t: '挂念', w: 6 }, { t: '碉楼', w: 5 }, { t: '美国', w: 5 },
+    { t: '寄钱', w: 4 }
+];
+
+// 确定性伪随机：保证每次渲染布局一致（seeded mulberry32）
+function seedRng(seed) {
+    let a = seed >>> 0;
+    return function () {
+        a = (a + 0x6D2B79F5) | 0;
+        let t = Math.imul(a ^ (a >>> 15), 1 | a);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+}
+
+// 铜色分级：权重越高越亮，形成由中心向外的明度衰减
+function cloudTone(n) {
+    if (n >= 0.88) return ['#E4CB95', 1];
+    if (n >= 0.66) return ['#C6A66A', 0.96];
+    if (n >= 0.44) return ['#A79E8F', 0.84];
+    return ['#7A7367', 0.74];
+}
+
+function cloudLayout(items, W, H, o) {
+    const ws = items.map((i) => i.w);
+    const lo = Math.min.apply(null, ws);
+    const hi = Math.max.apply(null, ws);
+    const span = Math.max(hi - lo, 1);
+    const rnd = seedRng(o.seed);
+    const pad = o.gap;
+    const GA = 2.399963;                          // 黄金角：候选点等面积分布
+
+    // 按字号降序：大词先落位占据内圈，小词向外填充
+    const list = items.map((it) => {
+        const n = (it.w - lo) / span;
+        return {
+            t: it.t, w: it.w, n: n,
+            size: o.min + n * (o.max - o.min),
+            rot: rnd() < o.rotShare ? 90 : 0
+        };
+    }).sort((a, b) => b.size - a.size);
+
+    const cx = W / 2, cy = H / 2;
+    // 可用半径：受画布短边约束（sy 压扁时按 y 反算实际可达半径）
+    const rMax = Math.min(W / 2 - pad, (H / 2 - pad) / Math.max(o.sy, 0.15)) * o.fill;
+    const done = [];
+
+    for (let k = 0; k < list.length; k++) {
+        const it = list[k];
+        const tw = it.t.length * it.size;          // 纯 CJK：1 字 ≈ 1 em
+        const th = it.size * 1.02;
+        const bw = it.rot ? th : tw;
+        const bh = it.rot ? tw : th;
+        // 按秩分配的均布半径：每个词从各自的环带起步，碰撞时再沿螺旋外扩
+        const r0 = rMax * Math.sqrt((k + 0.3) / list.length);
+        let spot = null;
+
+        for (let s = 0; s < 2400 && !spot; s++) {
+            const ang = s * GA + k * 1.7;
+            const rad = Math.min(r0 + o.spacing * Math.sqrt(s), rMax * 1.5);
+            const x = cx + rad * Math.cos(ang) * o.sx;
+            const y = cy + rad * Math.sin(ang) * o.sy;
+            if (x - bw / 2 < pad || x + bw / 2 > W - pad) continue;
+            if (y - bh / 2 < pad || y + bh / 2 > H - pad) continue;
+            let bad = false;
+            for (let j = 0; j < done.length; j++) {
+                const p = done[j];
+                if (Math.abs(x - p.x) * 2 < bw + p.bw + pad &&
+                    Math.abs(y - p.y) * 2 < bh + p.bh + pad) { bad = true; break; }
             }
-            
-            container.style.height = '320px';
-            spinner.style.display = 'flex';
-            const imgPath = currentImages[currentImageIndex];
-            
-            img.onload = () => {
-                spinner.style.display = 'none';
-                const containerWidth = container.offsetWidth - 32;
-                const scale = Math.min(containerWidth / img.width, 1);
-                const newHeight = Math.min(img.height * scale + 16, 500);
-                container.style.height = newHeight + 'px';
-            };
-            img.onerror = () => {
-                spinner.style.display = 'none';
-                img.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"%3E%3Crect fill="%233d2d26" width="200" height="200"/%3E%3Ctext fill="%238B6E55" font-family="sans-serif" font-size="14" x="50%25" y="50%25" text-anchor="middle" dominant-baseline="middle"%3E图片加载失败%3C/text%3E%3C/svg%3E';
-            };
-            img.src = imgPath + '?t=' + currentImageIndex;
+            if (!bad) spot = { x: x, y: y };
         }
+        if (spot) {
+            done.push({
+                t: it.t, w: it.w, n: it.n, size: it.size, rot: it.rot,
+                x: spot.x, y: spot.y, bw: bw, bh: bh
+            });
+        }
+    }
+    return done;
+}
 
-        function nextImage() {
-            if (currentImages.length > 1) {
-                currentImageIndex = (currentImageIndex + 1) % currentImages.length;
-                updateModalImage();
+function renderCloud(hostId, items, o) {
+    const host = document.getElementById(hostId);
+    if (!host) return;
+
+    const placed = cloudLayout(items, o.w, o.h, o);
+    const terms = items.slice().sort((a, b) => b.w - a.w).map((i) => i.t).join('、');
+    const out = ['<svg viewBox="0 0 ' + o.w + ' ' + o.h + '" role="img" aria-label="' +
+                 o.label + '：' + terms + '">'];
+
+    placed.forEach((p, i) => {
+        const tone = cloudTone(p.n);
+        const x = p.x.toFixed(1), y = p.y.toFixed(1);
+        const attrs = ' font-size="' + p.size.toFixed(1) + '" fill="' + tone[0] +
+                      '" opacity="' + tone[1] +
+                      '" text-anchor="middle" dominant-baseline="central"';
+        // 竖排：逐字正立沿纵向排布（中式竖排），而非整词旋转 90°，更合中文阅读习惯
+        let body;
+        if (p.rot) {
+            const lineH = p.size * 1.02;
+            const y0 = p.y - (p.t.length - 1) * lineH / 2;
+            const spans = [];
+            for (let c = 0; c < p.t.length; c++) {
+                spans.push('<tspan x="' + x + '" y="' + (y0 + c * lineH).toFixed(1) + '">' +
+                           p.t.charAt(c) + '</tspan>');
             }
+            body = '<text' + attrs + '>' + spans.join('') + '</text>';
+        } else {
+            body = '<text x="' + x + '" y="' + y + '"' + attrs + '>' + p.t + '</text>';
         }
+        out.push(
+            '<g class="cw-word" data-term="' + p.t + '" data-w="' + p.w +
+                '" style="animation-delay:' + (i * 42) + 'ms">' + body + '</g>'
+        );
+    });
+    out.push('</svg>');
+    host.innerHTML = out.join('');
 
-        function prevImage() {
-            if (currentImages.length > 1) {
-                currentImageIndex = (currentImageIndex - 1 + currentImages.length) % currentImages.length;
-                updateModalImage();
-            }
+    // 悬停：高亮当前词 + 图例右侧显示权重
+    const hint = o.hintId ? document.getElementById(o.hintId) : null;
+    const base = hint ? hint.textContent : '';
+    const words = host.querySelectorAll('.cw-word');
+
+    host.addEventListener('mouseover', (e) => {
+        const g = e.target.closest ? e.target.closest('.cw-word') : null;
+        if (!g || !host.contains(g)) return;
+        host.classList.add('is-hot');
+        words.forEach((n) => n.classList.toggle('is-hot', n === g));
+        if (hint) hint.innerHTML = '<b>' + g.dataset.term + '</b> · 权重 ' + g.dataset.w;
+    });
+    host.addEventListener('mouseleave', () => {
+        host.classList.remove('is-hot');
+        words.forEach((n) => n.classList.remove('is-hot'));
+        if (hint) hint.textContent = base;
+    });
+}
+
+function initClouds() {
+    renderCloud('tagCloud', TAG_CLOUD, {
+        w: 374, h: 255, min: 12, max: 26.5, gap: 5,
+        fill: 0.88, spacing: 22, sx: 1, sy: 0.76, rotShare: 0.18,
+        seed: 20260927, hintId: 'cloudHint',
+        label: '侨乡文化标签词云，按词频从大到小'
+    });
+    const cnt = document.getElementById('cloudCount');
+    if (cnt) cnt.textContent = TAG_CLOUD.length + ' 项';
+
+    renderCloud('qiaopiCloud', QIAOPI_CLOUD, {
+        w: 374, h: 150, min: 15.5, max: 28, gap: 4,
+        fill: 0.94, spacing: 22, sx: 1, sy: 0.4, rotShare: 0.1,
+        seed: 19321940, hintId: 'qiaopiHint',
+        label: '侨批高频词云，按词频从大到小'
+    });
+}
+
+function setupUI() {
+    // 词云（数据档案 → 文化标签 / 侨批情感）
+    initClouds();
+
+    // 视角切换（聚焦模式下按当前楼动态取景）
+    document.querySelectorAll('.view-chip').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.view-chip').forEach((b) => b.classList.remove('is-on'));
+            btn.classList.add('is-on');
+            activeView = btn.dataset.view;
+            const v = getViewPositions()[activeView];
+            if (v) animateCamera(v.camera, v.target);
+            dismissHint();
+        });
+    });
+
+    // 年代轴：切镜头 + 打开该阶段档案
+    document.querySelectorAll('.tl-node').forEach((node) => {
+        node.addEventListener('click', () => {
+            document.querySelectorAll('.tl-node').forEach((n) => n.classList.remove('is-on'));
+            node.classList.add('is-on');
+            const d = eraTimeline[node.dataset.era];
+            if (!d) return;
+            animateCamera(d.camera, d.target);
+            openDetail('era', d);
+            dismissHint();
+        });
+    });
+
+    // 顶栏
+    $('btnData').addEventListener('click', () => { selectTab(activeTab); dismissHint(); });
+    $('btnAbout').addEventListener('click', () => { $('aboutModal').classList.add('is-on'); dismissHint(); });
+    $('aboutClose').addEventListener('click', () => $('aboutModal').classList.remove('is-on'));
+    $('aboutModal').addEventListener('click', (e) => {
+        if (e.target === $('aboutModal')) $('aboutModal').classList.remove('is-on');
+    });
+
+    // 逐楼鉴赏：进入 / 退出 / 前后切换 / 打开当前楼档案
+    $('btnFocus').addEventListener('click', () => {
+        if (viewMode === 'focus') exitFocus();
+        else enterFocus('feijilou');
+    });
+    $('scPrev').addEventListener('click', stepFocus(-1));
+    $('scNext').addEventListener('click', stepFocus(1));
+    $('scMain').addEventListener('click', () => {
+        if (focusKey) openDetail('diaolou', diaolouData[focusKey]);
+    });
+
+    // 抽屉
+    $('drawerClose').addEventListener('click', closeDrawer);
+    $('drawerBack').addEventListener('click', goBack);
+    scrim.addEventListener('click', closeDrawer);
+
+    drawerTabs.querySelectorAll('.tab').forEach((t) => {
+        t.addEventListener('click', () => selectTab(t.dataset.tab));
+    });
+
+    // 关系网络节点：事件委托，同时支持鼠标与键盘（SVG 内用 <g> 承载热区）
+    const activateNode = (target) => {
+        const hit = target.closest ? target.closest('.node-hit') : null;
+        if (!hit) return false;
+        openNode(hit.dataset.type, parseInt(hit.dataset.id, 10));
+        return true;
+    };
+    drawerBody.addEventListener('click', (e) => {
+        if (activateNode(e.target)) return;
+        const card = e.target.closest ? e.target.closest('.qp-card') : null;
+        if (card) openDetail('qiaopi', qiaopiData[parseInt(card.dataset.qp, 10)]);
+    });
+    drawerBody.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        if (activateNode(e.target)) e.preventDefault();
+    });
+
+    // 全局
+    window.addEventListener('resize', handleResize);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) markDirty(); });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            if ($('aboutModal').classList.contains('is-on')) { $('aboutModal').classList.remove('is-on'); return; }
+            if (drawerIsOpen) { closeDrawer(); return; }
+            if (viewMode === 'focus') exitFocus();
+            return;
         }
-
-        function initCharts() {
-            echarts.init(document.getElementById('eraChart')).setOption({
-                tooltip: { trigger: 'axis' },
-                grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
-                xAxis: { type: 'category', data: ['清末', '民国初', '民国鼎盛', '抗战前', '现代修复'], axisLine: { lineStyle: { color: '#8B6E55' } }, axisLabel: { color: '#D4C2A8', fontSize: 10 } },
-                yAxis: { type: 'value', axisLine: { lineStyle: { color: '#8B6E55' } }, axisLabel: { color: '#D4C2A8', fontSize: 10 }, splitLine: { lineStyle: { color: '#5C4033' } } },
-                series: [{ data: [4, 8, 15, 6, 3], type: 'bar', itemStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: '#C87941' }, { offset: 1, color: '#8B6E55' }]), borderRadius: [4, 4, 0, 0] } }]
-            });
-
-            echarts.init(document.getElementById('materialChart')).setOption({
-                tooltip: { trigger: 'item', formatter: '{b}: {c}%' },
-                legend: { orient: 'vertical', right: 0, top: 'center', textStyle: { color: '#D4C2A8', fontSize: 10 } },
-                series: [{ radius: ['40%', '70%'], center: ['40%', '50%'], type: 'pie', label: { show: false }, labelLine: { show: false }, data: [
-                    { value: 45, name: '青砖', itemStyle: { color: '#8B6E55' } },
-                    { value: 25, name: '红砖', itemStyle: { color: '#C87941' } },
-                    { value: 18, name: '混凝土', itemStyle: { color: '#5C4033' } },
-                    { value: 7, name: '石材', itemStyle: { color: '#D4C2A8' } },
-                    { value: 5, name: '木材', itemStyle: { color: '#3D2D26' } }
-                ]}]
-            });
-
-            echarts.init(document.getElementById('emotionCurve')).setOption({
-                tooltip: { trigger: 'axis', backgroundColor: 'rgba(43,31,26,0.95)', borderColor: '#8B6E55', textStyle: { color: '#D4C2A8' } },
-                grid: { left: '3%', right: '4%', bottom: '3%', top: '10%', containLabel: true },
-                xAxis: { type: 'category', boundaryGap: false, data: ['1923', '1926', '1929', '1932', '1935', '1938', '1940'], axisLine: { lineStyle: { color: '#8B6E55' } }, axisLabel: { color: '#D4C2A8', fontSize: 9 } },
-                yAxis: { type: 'value', min: 0, max: 100, axisLine: { lineStyle: { color: '#8B6E55' } }, axisLabel: { color: '#D4C2A8', fontSize: 9 }, splitLine: { lineStyle: { color: '#5C4033' } } },
-                series: [{ data: [45, 58, 72, 85, 70, 55, 40], type: 'line', smooth: true, areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: 'rgba(200,121,65,0.5)' }, { offset: 1, color: 'rgba(200,121,65,0.05)' }]) }, lineStyle: { color: '#C87941', width: 2 }, itemStyle: { color: '#C87941' } }]
-            });
-
-            window.addEventListener('resize', () => {
-                echarts.init(document.getElementById('eraChart')).resize();
-                echarts.init(document.getElementById('materialChart')).resize();
-                echarts.init(document.getElementById('emotionCurve')).resize();
-            });
+        // 聚焦模式：←/→ 切换碉楼
+        if (viewMode === 'focus' && !drawerIsOpen &&
+            (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+            e.preventDefault();
+            stepFocus(e.key === 'ArrowRight' ? 1 : -1)();
         }
+    });
 
-        function setupEventListeners() {
-            document.querySelectorAll('.view-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                    animateCamera(viewPositions[btn.dataset.view].camera, viewPositions[btn.dataset.view].target);
-                });
-            });
+    // 用户一旦开始操作，提示语就退场
+    ['pointerdown', 'wheel', 'touchstart'].forEach((ev) => {
+        window.addEventListener(ev, dismissHint, { passive: true, once: true });
+    });
+    setTimeout(dismissHint, 9000);
+}
 
-            document.getElementById('closeModal').addEventListener('click', () => {
-                document.getElementById('infoModal').style.display = 'none';
-            });
+/* ── 启动 ───────────────────────────────────────────────── */
+window.addEventListener('DOMContentLoaded', () => {
+    try {
+        init();
+    } catch (err) {
+        console.error('[scene]', err);
+        failBoot();
+    }
+});
 
-            document.getElementById('closeTimelineModal').addEventListener('click', () => {
-                document.getElementById('timelineModal').style.display = 'none';
-            });
-
-            document.getElementById('timelineModal').addEventListener('click', (e) => {
-                if (e.target.id === 'timelineModal') document.getElementById('timelineModal').style.display = 'none';
-            });
-
-            document.getElementById('prevImage').addEventListener('click', prevImage);
-            document.getElementById('nextImage').addEventListener('click', nextImage);
-
-            document.getElementById('infoModal').addEventListener('click', (e) => {
-                if (e.target.id === 'infoModal') document.getElementById('infoModal').style.display = 'none';
-            });
-
-            document.getElementById('closeQiaopiModal').addEventListener('click', () => {
-                document.getElementById('qiaopiModal').style.display = 'none';
-            });
-
-            document.getElementById('qiaopiModal').addEventListener('click', (e) => {
-                if (e.target.id === 'qiaopiModal') document.getElementById('qiaopiModal').style.display = 'none';
-            });
-
-            document.getElementById('closeNetworkModal').addEventListener('click', () => {
-                document.getElementById('networkModal').style.display = 'none';
-            });
-
-            document.getElementById('networkModal').addEventListener('click', (e) => {
-                if (e.target.id === 'networkModal') document.getElementById('networkModal').style.display = 'none';
-            });
-
-            initNetworkNodes();
-
-            window.addEventListener('resize', () => {
-                camera.aspect = window.innerWidth / window.innerHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(window.innerWidth, window.innerHeight);
-            });
-        }
-
-        function initNetworkNodes() {
-            document.querySelectorAll('.node-circle').forEach(node => {
-                node.addEventListener('click', () => {
-                    const type = node.dataset.type;
-                    const id = parseInt(node.dataset.id);
-                    showNetworkModal(type, id);
-                });
-            });
-        }
-
-        function showNetworkModal(type, id) {
-            const typeNames = { person: '👤 人物', object: '📦 物件', place: '📍 地点' };
-            const data = networkNodeData[type][id];
-            document.getElementById('networkTitle').textContent = data.name;
-            document.getElementById('networkType').textContent = typeNames[type] + ' · ' + data.title;
-            document.getElementById('networkDesc').textContent = data.desc;
-            const imgEl = document.getElementById('networkImage');
-            if (data.image && (data.image.includes('.jpg') || data.image.includes('.png'))) {
-                imgEl.innerHTML = `<img src="${data.image}" style="max-width:100%;max-height:128px;object-fit:contain;">`;
-            } else {
-                imgEl.innerHTML = `<span style="font-size:2.5rem;">${data.image}</span>`;
-            }
-            document.getElementById('networkModal').style.display = 'flex';
-        }
-
-        function showQiaopiModal(index) {
-            const data = qiaopiData[index];
-            document.getElementById('qiaopiTitle').textContent = data.title;
-            document.getElementById('qiaopiEra').textContent = data.era;
-            document.getElementById('qiaopiContent').textContent = data.content;
-            document.getElementById('qiaopiStory').textContent = data.story;
-            const imgEl = document.getElementById('qiaopiImage');
-            if (data.image && data.image !== 'assets/qiaopi_0.jpg') {
-                imgEl.style.backgroundImage = `url(${data.image})`;
-                imgEl.innerHTML = '';
-            } else {
-                imgEl.style.backgroundImage = 'none';
-                imgEl.innerHTML = '<span style="color:#C87941;font-size:3rem;">✉</span>';
-            }
-            document.getElementById('qiaopiModal').style.display = 'flex';
-        }
-
-        function animateCamera(targetCamera, targetLookAt) {
-            const startCamera = { x: camera.position.x, y: camera.position.y, z: camera.position.z };
-            const startTarget = { x: controls.target.x, y: controls.target.y, z: controls.target.z };
-            const duration = 1200;
-            const startTime = Date.now();
-
-            function update() {
-                const elapsed = Date.now() - startTime;
-                const progress = Math.min(elapsed / duration, 1);
-                const eased = 1 - Math.pow(1 - progress, 3);
-                
-                camera.position.x = startCamera.x + (targetCamera.x - startCamera.x) * eased;
-                camera.position.y = startCamera.y + (targetCamera.y - startCamera.y) * eased;
-                camera.position.z = startCamera.z + (targetCamera.z - startCamera.z) * eased;
-                
-                controls.target.x = startTarget.x + (targetLookAt.x - startTarget.x) * eased;
-                controls.target.y = startTarget.y + (targetLookAt.y - startTarget.y) * eased;
-                controls.target.z = startTarget.z + (targetLookAt.z - startTarget.z) * eased;
-                
-                if (progress < 1) requestAnimationFrame(update);
-            }
-            update();
-        }
-
-        function animate() {
-            requestAnimationFrame(animate);
-            controls.update();
-            updateHotspotPositions();
-            renderer.render(scene, camera);
-        }
-
-        window.addEventListener('DOMContentLoaded', init);
-    </script>
+// 兜底：若 init 因任何原因未跑到 hideBoot，首屏不会永久停留
+window.addEventListener('load', () => {
+    if (bootHidden) return;
+    setTimeout(() => { if (!bootHidden) failBoot(); }, 1600);
+});
+</script>
 </body>
 </html>

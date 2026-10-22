@@ -1,0 +1,3 @@
+本文件用于告诉 GitHub Pages 跳过 Jekyll 构建流程。
+本项目是纯静态站点，无需 Jekyll 处理；跳过构建可以加快部署生效速度，
+并避免 Jekyll 因目录名（如 vendor/、assets/）产生的意外过滤。
