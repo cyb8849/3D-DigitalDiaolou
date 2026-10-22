@@ -12,7 +12,10 @@
 | 访问日志 | `/www/wwwlogs/diaolou.log` |
 | 错误日志 | `/www/wwwlogs/diaolou.error.log` |
 
-目录结构：`index.html`、`vendor/`（three.js 三个库）、`models/`（3 个 glb）、`assets/`（18 张 webp），共 25 个文件，约 35MB。
+目录结构：`index.html`、`vendor/`（three.js + 控件 + Meshopt 解码器，共 4 个文件）、`models/`（3 个 glb，合计 3.3MB）、`assets/`（18 张 webp），共 26 个文件，约 5MB。
+
+模型经 Meshopt 几何压缩 + 1024px WebP 纹理：34.6MB → 3.3MB（-90%）。客户端需先加载 `vendor/meshopt_decoder.js` 并 `loader.setMeshoptDecoder()`，缺这一步模型会解码失败并回退成体块。
+
 
 ## nginx 关键配置
 
@@ -60,7 +63,7 @@ git fetch origin main && git checkout -f origin/main
 ## 已知限制
 
 1. **无 HTTPS**：没有绑定域名，无法申请证书。接入域名后可一键开 Let's Encrypt。
-2. **22MB 模型加载慢**：实测服务器出网约 4Mbps，`zhangbaijiashu.glb`（22.6MB）下载需 **51 秒**。建议按审计清单做纹理压缩到 5MB 以内。
+2. **模型压缩后仍受出网带宽限制**：服务器出网约 4Mbps，最大的 `zhangbaijiashu.glb`（1.5MB）约 3–4 秒可下完；首屏同时预载三座约 3.3MB，约 7 秒。若后续继续加模型，建议改为进入聚焦模式时按需加载。
 3. **宝塔面板端口 41287 对全网开放**：建议在轻量云防火墙里限制为自己的固定 IP。
 4. **8080 端口开放但无服务**（原 Spring Boot 用途）：不用可在防火墙关闭。
 
