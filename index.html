@@ -1274,6 +1274,7 @@ let viewMode = 'overview';    // 'overview' 全村概览 | 'focus' 逐楼聚焦
 let monumentsGroup = null;    // 全村体块容器
 const monumentsById = {};     // 数据键 → 体块 Group
 let focusSphere = null;       // 当前聚焦楼的包围球（相机取景用）
+let focusSize   = null;       // 当前聚焦楼的包围盒尺寸（宽/高/深，米）
 
 /* 按需渲染：相机静止时不绘制，CPU/GPU 占用接近 0 */
 let needsRender = true;
@@ -1688,17 +1689,75 @@ function computeFocusSphere() {
         const vis = monumentsGroup ? monumentsGroup.children.find((c) => c.visible) : null;
         obj = vis || null;
     }
-    if (!obj) { focusSphere = null; return; }
+    if (!obj) { focusSphere = null; focusSize = null; return; }
     const box = new THREE.Box3().setFromObject(obj);
-    if (box.isEmpty()) { focusSphere = null; return; }
+    if (box.isEmpty()) { focusSphere = null; focusSize = null; return; }
     focusSphere = box.getBoundingSphere(new THREE.Sphere());
+    focusSize = box.getSize(new THREE.Vector3());
 }
 
-// 依据包围球与视口宽高比求取景距离（窄屏按水平 FOV 收缩）
-function frameDistance(r) {
-    const vHalf = THREE.MathUtils.degToRad(camera.fov) / 2;
-    const hHalf = Math.atan(Math.tan(vHalf) * camera.aspect);
-    return (r / Math.tan(Math.min(vHalf, hHalf))) * 1.14;
+/* 迭代求机位距离：从给定方向逼近包围盒，直到 8 个角都落进「安全框」。
+   安全框按顶栏与底部进度条的真实像素高度换算，屏幕再矮也不会被 UI 压住。 */
+function focusSafeBand() {
+    const vh = Math.max(window.innerHeight, 1);
+    const header = document.querySelector('.topbar');
+    const sc = document.getElementById('showcase');
+    const topPx = (header ? header.offsetHeight : 72) + 14;
+    const botPx = (sc && !sc.hidden ? sc.offsetHeight : 0) + 18;
+    return {
+        top: 1 - (2 * topPx) / vh,
+        bottom: -1 + (2 * botPx) / vh
+    };
+}
+
+function solveFrameDistance(c, size, dir) {
+    const probe = new THREE.PerspectiveCamera(camera.fov, camera.aspect, 0.5, 8000);
+    const half = new THREE.Vector3(size.x / 2, size.y / 2, size.z / 2);
+    const target = new THREE.Vector3(c.x, c.y, c.z);
+    const band = focusSafeBand();
+    const tanV = Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2);
+    const desiredMid = (band.top + band.bottom) / 2;
+
+    // 评估某个距离 / 视线高度下，包围盒 8 角的越界程度（1 = 正好贴住安全框）
+    function evaluate(d, ty) {
+        target.set(c.x, c.y + ty, c.z);
+        probe.position.set(c.x + dir.x * d, c.y + dir.y * d, c.z + dir.z * d);
+        probe.lookAt(target);
+        probe.updateMatrixWorld(true);
+        probe.updateProjectionMatrix();
+        let worst = 0, ymin = 9, ymax = -9;
+        for (let i = 0; i < 8; i++) {
+            const p = new THREE.Vector3(
+                c.x + ((i & 1) ? half.x : -half.x),
+                c.y + ((i & 2) ? half.y : -half.y),
+                c.z + ((i & 4) ? half.z : -half.z)
+            ).project(probe);
+            ymin = Math.min(ymin, p.y);
+            ymax = Math.max(ymax, p.y);
+            worst = Math.max(worst, Math.abs(p.x) / 0.94, p.y > 0 ? p.y / band.top : p.y / band.bottom);
+        }
+        return { worst: worst, mid: (ymin + ymax) / 2 };
+    }
+
+    let d = (Math.max(size.x, size.y, size.z) * 0.62) / tanV * 1.25;
+    let ty = 0;
+    for (let round = 0; round < 2; round++) {
+        // ① 先把「画面中心」对齐安全框中心（把楼摆正、不被顶栏/进度条吃掉）
+        for (let i = 0; i < 5; i++) {
+            const r = evaluate(d, ty);
+            const delta = (r.mid - desiredMid) * d * tanV;
+            if (Math.abs(delta) < 0.01) break;
+            ty += delta;
+        }
+        // ② 再二分距离，让最大的那个角刚好贴边（worst 随距离单调递减）
+        let lo = d * 0.12, hi = d * 3.2;
+        for (let i = 0; i < 22; i++) {
+            const mid = (lo + hi) / 2;
+            if (evaluate(mid, ty).worst > 1) lo = mid; else hi = mid;
+        }
+        d = hi;
+    }
+    return { d: d, ty: ty };
 }
 
 /* ── 首屏 ───────────────────────────────────────────────── */
@@ -1806,6 +1865,17 @@ function handleResize() {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
+    // 聚焦模式下宽高比变了，取景距离也要跟着变，否则竖屏会裁掉两侧
+    if (viewMode === 'focus' && focusSphere) {
+        computeFocusSphere();
+        const v = getViewPositions()[activeView];
+        if (v) {
+            camera.position.set(v.camera.x, v.camera.y, v.camera.z);
+            controls.target.set(v.target.x, v.target.y, v.target.z);
+            controls.update();
+        }
+        syncFocusDistances();
+    }
     markDirty();
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(markDirty, 140);
@@ -1846,6 +1916,14 @@ const scOrder = Object.keys(diaolouData);   // 展示顺序与数据表一致
 let focusKey = null;
 let activeView = 'detail';                  // 当前视角芯片（俯瞰/正视/细节）
 
+// 切换视角芯片状态（进入聚焦时强制回到「正视」，先给整体正面）
+function setActiveView(name) {
+    activeView = name;
+    document.querySelectorAll('.view-chip').forEach((b) => {
+        b.classList.toggle('is-on', b.dataset.view === name);
+    });
+}
+
 const showcase = $('showcase');
 
 function updateScProgress(key, pct) {
@@ -1879,26 +1957,27 @@ function syncFocusDistances() {
     }
 }
 
-// 视角芯片取景：聚焦模式按当前楼包围球动态计算，概览沿用固定机位
+// 视角芯片取景：聚焦模式按当前楼包围盒动态计算，概览沿用固定机位
 function getViewPositions() {
     if (viewMode !== 'focus' || !focusSphere) return viewPositions;
     const c = focusSphere.center;
-    const r = Math.max(focusSphere.radius, 2);
-    const d = frameDistance(r) * 1.04;
-    return {
-        overhead: {
-            camera: { x: c.x + d * 0.06, y: c.y + d * 1.10, z: c.z + d * 0.28 },
-            target: { x: c.x, y: c.y - r * 0.2, z: c.z }
-        },
-        front: {
-            camera: { x: c.x, y: c.y + r * 0.12, z: c.z - d },
-            target: { x: c.x, y: c.y, z: c.z }
-        },
-        detail: {
-            camera: { x: c.x + d * 0.4879, y: c.y + d * 0.3584, z: c.z - d * 0.7959 },
-            target: { x: c.x, y: c.y - r * 0.05, z: c.z }
-        }
+    const s = focusSize || { x: 6, y: 6, z: 6 };
+
+    // 三座模型的正面均朝 +Z：正视站在正前方，细节偏右 20° 拉近，俯瞰从上前方俯视
+    const yaw = THREE.MathUtils.degToRad(20);
+    const dirFront  = new THREE.Vector3(0, 0.10, 1).normalize();
+    const dirDetail = new THREE.Vector3(Math.sin(yaw), 0.12, Math.cos(yaw)).normalize();
+    const dirTop    = new THREE.Vector3(0, 0.78, 1).normalize();   // 约 38° 俯角，能看到屋顶与立面
+
+    const at = (dir, zoom) => {
+        const fit = solveFrameDistance(c, s, dir);
+        const d = fit.d * (zoom || 1);
+        return {
+            camera: { x: c.x + dir.x * d, y: c.y + dir.y * d, z: c.z + dir.z * d },
+            target: { x: c.x, y: c.y + fit.ty, z: c.z }
+        };
     };
+    return { overhead: at(dirTop), front: at(dirFront), detail: at(dirDetail, 0.76) };
 }
 
 function focusOn(key) {
@@ -1936,6 +2015,7 @@ function enterFocus(key) {
     $('btnFocus').setAttribute('aria-pressed', 'true');
     $('btnFocusLabel').textContent = '返回全景';
     scene.fog.density = 0.0085;   // 聚焦单楼时减弱雾，让近景更通透
+    setActiveView('front');       // 先给整体正面，用户再切俯瞰/细节
     focusOn(key || 'feijilou');
     dismissHint();
 }
@@ -2381,9 +2461,7 @@ function setupUI() {
     // 视角切换（聚焦模式下按当前楼动态取景）
     document.querySelectorAll('.view-chip').forEach((btn) => {
         btn.addEventListener('click', () => {
-            document.querySelectorAll('.view-chip').forEach((b) => b.classList.remove('is-on'));
-            btn.classList.add('is-on');
-            activeView = btn.dataset.view;
+            setActiveView(btn.dataset.view);
             const v = getViewPositions()[activeView];
             if (v) animateCamera(v.camera, v.target);
             dismissHint();
