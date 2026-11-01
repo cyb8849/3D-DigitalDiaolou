@@ -12,7 +12,7 @@
 | 访问日志 | `/www/wwwlogs/diaolou.log` |
 | 错误日志 | `/www/wwwlogs/diaolou.error.log` |
 
-目录结构：`index.html`、`vendor/`（three.js + 控件 + Meshopt 解码器，共 4 个文件）、`models/`（4 个 glb，合计 19.6MB）、`assets/`（18 张 webp），共 27 个文件，约 21MB。
+目录结构：`index.html`、`vendor/`（three.js + 控件 + Meshopt 解码器，共 4 个文件）、`models/`（4 个 glb，合计 20.4MB）、`assets/`（18 张 webp），共 27 个文件，约 22MB。
 
 模型经 Meshopt 几何压缩 + 1024px WebP 纹理（2026-10-23 更换鹰扬堂 V13 高模：88MB → 8.5MB）。客户端需先加载 `vendor/meshopt_decoder.js` 并 `loader.setMeshoptDecoder()`，缺这一步模型会解码失败并回退成体块。客户端需先加载 `vendor/meshopt_decoder.js` 并 `loader.setMeshoptDecoder()`，缺这一步模型会解码失败并回退成体块。
 
@@ -57,7 +57,7 @@ git fetch origin main && git checkout -f origin/main
 ## 已验证
 
 - 首页 200（117,252B，2026-10-22 压缩模型版本）
-- `models/*.glb` 三个文件与本地 **md5 完全一致**（4 个合计 19.6MB；瑞莲楼 8.9MB、鹰扬堂 8.5MB 为最大两座）
+- `models/*.glb` 三个文件与本地 **md5 完全一致**（4 个合计 20.4MB；瑞莲楼 9.7MB、鹰扬堂 8.5MB 为最大两座）
 - `vendor/*.js`、`assets/*.webp` 与本地 md5 一致
 - gzip 生效：index 117KB → 32KB，three.js 589KB → 151KB
 - 缺失静态资源返回 404，favicon 返回 204
@@ -66,7 +66,7 @@ git fetch origin main && git checkout -f origin/main
 ## 已知限制
 
 1. **无 HTTPS**：没有绑定域名，无法申请证书。接入域名后可一键开 Let's Encrypt。
-2. **模型压缩后仍受出网带宽限制**：服务器出网约 4Mbps，最大的 `ruilianlou.glb`（8.9MB）约 18 秒、`yingyangtang.glb`（8.5MB）约 17 秒可下完；首屏同时预载四座约 19.6MB，约 39 秒。建议改为进入聚焦模式时按需加载对应模型。
+2. **模型压缩后仍受出网带宽限制**：服务器出网约 4Mbps，最大的 `ruilianlou.glb`（9.7MB）约 19 秒、`yingyangtang.glb`（8.5MB）约 17 秒可下完；首屏同时预载四座约 20.4MB，约 41 秒。建议改为进入聚焦模式时按需加载对应模型。
 3. **宝塔面板端口 41287 对全网开放**：建议在轻量云防火墙里限制为自己的固定 IP。
 4. **8080 端口开放但无服务**（原 Spring Boot 用途）：不用可在防火墙关闭。
 
