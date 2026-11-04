@@ -12,9 +12,9 @@
 | 访问日志 | `/www/wwwlogs/diaolou.log` |
 | 错误日志 | `/www/wwwlogs/diaolou.error.log` |
 
-目录结构：`index.html`、`vendor/`（three.js + 控件 + Meshopt 解码器，共 4 个文件）、`models/`（4 个 glb，合计 20.4MB）、`assets/`（18 张 webp），共 27 个文件，约 22MB。
+目录结构：`index.html`、`vendor/`（three.js + 控件 + Meshopt 解码器，共 4 个文件）、`models/`（5 个 glb，合计 23.7MB）、`assets/`（18 张 webp），共 28 个文件，约 25MB。
 
-模型经 Meshopt 几何压缩 + 1024px WebP 纹理（2026-10-23 更换鹰扬堂 V13 高模：88MB → 8.5MB）。客户端需先加载 `vendor/meshopt_decoder.js` 并 `loader.setMeshoptDecoder()`，缺这一步模型会解码失败并回退成体块。客户端需先加载 `vendor/meshopt_decoder.js` 并 `loader.setMeshoptDecoder()`，缺这一步模型会解码失败并回退成体块。
+模型经 Meshopt 几何压缩 + 1024px WebP 纹理（2026-10-23 更换鹰扬堂 V13 高模：88MB → 8.5MB）。彰德阁为纯色材质无贴图，Blender 5.0.1 导出 → 剔除 Studio_Ground 地面 → meshopt 压缩（38.5MB → 3.3MB，2026-11-04）。客户端需先加载 `vendor/meshopt_decoder.js` 并 `loader.setMeshoptDecoder()`，缺这一步模型会解码失败并回退成体块。
 
 
 ## nginx 关键配置
@@ -66,7 +66,7 @@ git fetch origin main && git checkout -f origin/main
 ## 已知限制
 
 1. **无 HTTPS**：没有绑定域名，无法申请证书。接入域名后可一键开 Let's Encrypt。
-2. **模型压缩后仍受出网带宽限制**：服务器出网约 4Mbps，最大的 `ruilianlou.glb`（9.7MB）约 19 秒、`yingyangtang.glb`（8.5MB）约 17 秒可下完；首屏同时预载四座约 20.4MB，约 41 秒。建议改为进入聚焦模式时按需加载对应模型。
+2. **模型压缩后仍受出网带宽限制**：服务器出网约 4Mbps，最大的 `ruilianlou.glb`（9.7MB）约 19 秒、`yingyangtang.glb`（8.5MB）约 17 秒可下完；首屏同时预载五座约 23.7MB，约 48 秒。建议改为进入聚焦模式时按需加载对应模型。
 3. **宝塔面板端口 41287 对全网开放**：建议在轻量云防火墙里限制为自己的固定 IP。
 4. **8080 端口开放但无服务**（原 Spring Boot 用途）：不用可在防火墙关闭。
 
